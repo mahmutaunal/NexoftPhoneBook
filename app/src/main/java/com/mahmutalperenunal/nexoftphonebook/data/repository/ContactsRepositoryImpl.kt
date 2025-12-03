@@ -1,6 +1,5 @@
 package com.mahmutalperenunal.nexoftphonebook.data.repository
 
-import android.content.ContentResolver
 import com.mahmutalperenunal.nexoftphonebook.data.local.db.ContactsDao
 import com.mahmutalperenunal.nexoftphonebook.data.local.db.SearchHistoryDao
 import com.mahmutalperenunal.nexoftphonebook.data.local.entity.SearchHistoryEntity
@@ -24,8 +23,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class ContactsRepositoryImpl(
     private val api: ContactsApiService,
     private val contactsDao: ContactsDao,
-    private val searchHistoryDao: SearchHistoryDao,
-    private val contentResolver: ContentResolver
+    private val searchHistoryDao: SearchHistoryDao
 ) : ContactsRepository {
 
     override fun getContacts(): Flow<Result<List<Contact>>> = flow {
@@ -195,5 +193,13 @@ class ContactsRepositoryImpl(
         } catch (e: Exception) {
             Result.Error(e.message ?: "Upload failed")
         }
+    }
+
+    override suspend fun deleteSearchHistoryItem(id: Long) {
+        searchHistoryDao.deleteById(id)
+    }
+
+    override suspend fun clearSearchHistory() {
+        searchHistoryDao.clearAll()
     }
 }

@@ -8,6 +8,8 @@ import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactSectionUiModel
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactUiModel
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.DeleteContactUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactsUseCase
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.ClearSearchHistoryUseCase
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.DeleteSearchHistoryItemUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.GetSearchHistoryUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.SaveSearchQueryUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.SearchContactsUseCase
@@ -23,7 +25,9 @@ class ContactsViewModel(
     private val searchContactsUseCase: SearchContactsUseCase,
     private val deleteContactUseCase: DeleteContactUseCase,
     private val getSearchHistoryUseCase: GetSearchHistoryUseCase,
-    private val saveSearchQueryUseCase: SaveSearchQueryUseCase
+    private val saveSearchQueryUseCase: SaveSearchQueryUseCase,
+    private val deleteSearchHistoryItemUseCase: DeleteSearchHistoryItemUseCase,
+    private val clearSearchHistoryUseCase: ClearSearchHistoryUseCase
 ) : ViewModel() {
 
     // Backing state flow for the contacts screen
@@ -69,9 +73,15 @@ class ContactsViewModel(
             }
 
             is ContactsEvent.OnSearchHistoryItemClick -> {
-                val query = event.query
-                _state.value = _state.value.copy(searchQuery = query)
-                performSearch(query)
+                onEvent(ContactsEvent.OnSearchQueryChange(event.query))
+                onEvent(ContactsEvent.OnSearchSubmit(event.query))
+                _state.value = _state.value.copy(isSearchOverlayVisible = false)
+            }
+
+            is ContactsEvent.OnDeleteHistoryItem -> {
+                viewModelScope.launch {
+                    deleteSearchHistoryItemUseCase(event.id)
+                }
             }
 
             is ContactsEvent.OnRetry -> {
@@ -96,6 +106,21 @@ class ContactsViewModel(
 
             is ContactsEvent.OnListToastShown -> {
                 _state.value = _state.value.copy(successMessage = null)
+            }
+
+            is ContactsEvent.OnSearchBarClick -> {
+                _state.value = _state.value.copy(isSearchOverlayVisible = true)
+            }
+
+            is ContactsEvent.OnSearchOverlayDismiss -> {
+                _state.value = _state.value.copy(isSearchOverlayVisible = false)
+            }
+
+            is ContactsEvent.OnClearAllHistory -> {
+                viewModelScope.launch {
+                    clearSearchHistoryUseCase()
+                }
+                _state.value = _state.value.copy(searchHistory = emptyList())
             }
         }
     }
@@ -133,10 +158,7 @@ class ContactsViewModel(
         viewModelScope.launch {
             getSearchHistoryUseCase().collectLatest { items ->
                 _state.value = _state.value.copy(
-                    searchHistory = items
-                        .sortedByDescending { it.createdAt }
-                        .map { it.query }
-                        .distinct()
+                    searchHistory = items.sortedByDescending { it.createdAt }
                 )
             }
         }
@@ -229,7 +251,9 @@ class ContactsViewModel(
         private val searchContactsUseCase: SearchContactsUseCase,
         private val deleteContactUseCase: DeleteContactUseCase,
         private val getSearchHistoryUseCase: GetSearchHistoryUseCase,
-        private val saveSearchQueryUseCase: SaveSearchQueryUseCase
+        private val saveSearchQueryUseCase: SaveSearchQueryUseCase,
+        private val deleteSearchHistoryItemUseCase: DeleteSearchHistoryItemUseCase,
+        private val clearSearchHistoryUseCase: ClearSearchHistoryUseCase
     ) : ViewModelProvider.Factory {
 
         @Suppress("UNCHECKED_CAST")
@@ -240,7 +264,9 @@ class ContactsViewModel(
                     searchContactsUseCase,
                     deleteContactUseCase,
                     getSearchHistoryUseCase,
-                    saveSearchQueryUseCase
+                    saveSearchQueryUseCase,
+                    deleteSearchHistoryItemUseCase,
+                    clearSearchHistoryUseCase
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

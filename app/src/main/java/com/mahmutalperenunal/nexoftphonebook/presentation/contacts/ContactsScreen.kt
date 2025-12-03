@@ -25,11 +25,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -66,6 +70,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.mahmutalperenunal.nexoftphonebook.domain.entity.SearchHistoryItem
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactSectionUiModel
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactUiModel
 import com.mahmutalperenunal.nexoftphonebook.presentation.ui.LocalAppImageLoader
@@ -132,7 +137,7 @@ fun ContactsScreen(
                     modifier = Modifier
                         .fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(12.dp),
                     placeholder = {
                         Text(
                             text = "Search by name",
@@ -161,7 +166,7 @@ fun ContactsScreen(
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Search
                     ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    keyboardActions = KeyboardActions(
                         onSearch = {
                             onEvent(ContactsEvent.OnSearchSubmit(state.searchQuery))
                         }
@@ -169,6 +174,25 @@ fun ContactsScreen(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                if (state.searchQuery.isBlank() && state.searchHistory.isNotEmpty()) {
+                    SearchHistorySection(
+                        history = state.searchHistory,
+                        onItemClick = { query ->
+                            onEvent(ContactsEvent.OnSearchHistoryItemClick(query))
+                        },
+                        onDeleteItem = { id ->
+                            onEvent(ContactsEvent.OnDeleteHistoryItem(id))
+                        },
+                        onClearAll = {
+                            onEvent(ContactsEvent.OnClearAllHistory)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                val isSearching = state.searchQuery.isNotBlank()
 
                 when {
                     state.isLoading -> {
@@ -193,6 +217,19 @@ fun ContactsScreen(
                                 textAlign = TextAlign.Center
                             )
                         }
+                    }
+
+                    isSearching && !hasContacts -> {
+                        SearchNoResultsState()
+                    }
+
+                    isSearching -> {
+                        SearchResultsCard(
+                            sections = state.sections,
+                            onContactClick = { id ->
+                                onEvent(ContactsEvent.OnContactClick(id))
+                            }
+                        )
                     }
 
                     !hasContacts -> {
@@ -242,6 +279,7 @@ fun ContactsScreen(
                     )
                 }
             }
+
         }
     }
 }
@@ -640,5 +678,257 @@ private fun SuccessToast(
                 )
             )
         }
+    }
+}
+
+
+
+@Composable
+private fun SearchHistorySection(
+    history: List<SearchHistoryItem>,
+    onItemClick: (String) -> Unit,
+    onDeleteItem: (Long) -> Unit,
+    onClearAll: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "SEARCH HISTORY",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+
+            Text(
+                text = "Clear All",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                ),
+                modifier = Modifier.clickable { onClearAll() }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+        ) {
+            Column {
+                history.forEachIndexed { index, item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onItemClick(item.query) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove from history",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable {
+                                    onDeleteItem(item.id)
+                                }
+                        )
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Text(
+                            text = item.query,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    if (index < history.lastIndex) {
+                        Divider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultsCard(
+    sections: List<ContactSectionUiModel>,
+    onContactClick: (String) -> Unit
+) {
+    val results = remember(sections) {
+        sections.flatMap { it.items }
+    }
+
+    if (results.isEmpty()) return
+
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+        ) {
+            Column {
+                Text(
+                    text = "TOP NAME MATCHES",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                )
+
+                Divider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                )
+
+                results.forEachIndexed { index, contact ->
+                    SimpleContactRow(
+                        contact = contact,
+                        onClick = { onContactClick(contact.id) }
+                    )
+
+                    if (index < results.lastIndex) {
+                        Divider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimpleContactRow(
+    contact: ContactUiModel,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (contact.photoUrl != null) {
+            val imageLoader = LocalAppImageLoader.current
+
+            AsyncImage(
+                model = contact.photoUrl,
+                imageLoader = imageLoader,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = contact.displayName.firstOrNull()?.uppercase() ?: "?",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = contact.displayName,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            Text(
+                text = contact.phoneNumber,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchNoResultsState() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                modifier = Modifier.size(40.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "No Results",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.SemiBold
+            )
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "The user you are looking for could not be found.",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            ),
+            textAlign = TextAlign.Center
+        )
     }
 }

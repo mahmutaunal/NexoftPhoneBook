@@ -51,7 +51,9 @@ class MainActivity : ComponentActivity() {
                                     searchContactsUseCase = appContainer.searchContactsUseCase,
                                     deleteContactUseCase = appContainer.deleteContactUseCase,
                                     getSearchHistoryUseCase = appContainer.getSearchHistoryUseCase,
-                                    saveSearchQueryUseCase = appContainer.saveSearchQueryUseCase
+                                    saveSearchQueryUseCase = appContainer.saveSearchQueryUseCase,
+                                    deleteSearchHistoryItemUseCase = appContainer.deleteSearchHistoryItemUseCase,
+                                    clearSearchHistoryUseCase = appContainer.clearSearchHistoryUseCase
                                 )
                             )
                             val state by contactsViewModel.state.collectAsStateWithLifecycle()

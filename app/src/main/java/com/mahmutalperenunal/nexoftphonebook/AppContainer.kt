@@ -12,6 +12,8 @@ import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactD
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactsUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.UpsertContactUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.device.SaveContactToDeviceUseCase
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.ClearSearchHistoryUseCase
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.DeleteSearchHistoryItemUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.GetSearchHistoryUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.SaveSearchQueryUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.SearchContactsUseCase
@@ -64,7 +66,6 @@ class AppContainer(context: Context) {
             api = contactsApiService,
             contactsDao = contactsDao,
             searchHistoryDao = searchHistoryDao,
-            contentResolver = context.contentResolver
         )
 
     val getContactsUseCase = GetContactsUseCase(contactsRepository)
@@ -75,6 +76,8 @@ class AppContainer(context: Context) {
     val getContactDetailUseCase = GetContactDetailUseCase(contactsRepository)
     val upsertContactUseCase = UpsertContactUseCase(contactsRepository)
     val saveContactToDeviceUseCase = SaveContactToDeviceUseCase(contactsRepository)
-    // AppContainer.kt
     val uploadProfileImageUseCase = UploadProfileImageUseCase(contactsRepository)
+    val deleteSearchHistoryItemUseCase = DeleteSearchHistoryItemUseCase(contactsRepository)
+
+    val clearSearchHistoryUseCase = ClearSearchHistoryUseCase(contactsRepository)
 }

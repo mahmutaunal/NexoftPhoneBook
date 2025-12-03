@@ -16,4 +16,6 @@ interface ContactsRepository {
     suspend fun saveSearchQuery(query: String)
     suspend fun saveContactToDevice(contact: Contact): Result<Unit>
     suspend fun uploadProfileImage(imageBytes: ByteArray, fileName: String): Result<String>
+    suspend fun deleteSearchHistoryItem(id: Long)
+    suspend fun clearSearchHistory()
 }
