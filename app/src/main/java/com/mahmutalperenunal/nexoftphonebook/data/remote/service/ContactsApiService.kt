@@ -1,37 +1,56 @@
 package com.mahmutalperenunal.nexoftphonebook.data.remote.service
 
-import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.ContactDto
+import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.ApiResponse
+import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.UserDto
 import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.CreateOrUpdateContactRequest
+import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.ImageUploadResponse
+import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.UsersResponse
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 
 // Retrofit service defining API endpoints for remote contact operations
 interface ContactsApiService {
 
-    @GET("api/GetAll")
-    suspend fun getContacts(): List<ContactDto>
+    // GET /api/User/GetAll
+    @GET("api/User/GetAll")
+    suspend fun getContacts(): ApiResponse<UsersResponse>
 
-    @GET("api/Get/{id}")
+    // GET /api/User/{id}
+    @GET("api/User/{id}")
     suspend fun getContactById(
         @Path("id") id: String
-    ): ContactDto
+    ): ApiResponse<UserDto>
 
-    @POST("api/Create")
+    // POST /api/User
+    @POST("api/User")
     suspend fun createContact(
         @Body request: CreateOrUpdateContactRequest
-    ): ContactDto
+    ): ApiResponse<UserDto>
 
-    @PUT("api/Update")
+    // PUT /api/User/{id}
+    @PUT("api/User/{id}")
     suspend fun updateContact(
+        @Path("id") id: String,
         @Body request: CreateOrUpdateContactRequest
-    ): ContactDto
+    ): ApiResponse<UserDto>
 
-    @DELETE("api/Delete/{id}")
+    // DELETE /api/User/{id}
+    @DELETE("api/User/{id}")
     suspend fun deleteContact(
         @Path("id") id: String
-    )
+    ): ApiResponse<Map<String, Any>>
+
+    // POST /api/User/UploadImage
+    @Multipart
+    @POST("api/User/UploadImage")
+    suspend fun uploadImage(
+        @Part image: MultipartBody.Part
+    ): ApiResponse<ImageUploadResponse>
 }

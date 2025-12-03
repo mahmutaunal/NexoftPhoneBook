@@ -1,17 +1,16 @@
 package com.mahmutalperenunal.nexoftphonebook.data.mapper
 
 import com.mahmutalperenunal.nexoftphonebook.data.local.entity.ContactEntity
-import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.ContactDto
+import com.mahmutalperenunal.nexoftphonebook.data.remote.dto.UserDto
 import com.mahmutalperenunal.nexoftphonebook.domain.entity.Contact
 
-
-fun ContactDto.toEntity(): ContactEntity =
+fun UserDto.toEntity(): ContactEntity =
     ContactEntity(
         id = id,
         firstName = firstName,
         lastName = lastName,
         phoneNumber = phoneNumber,
-        photoUrl = photoUrl
+        photoUrl = profileImageUrl
     )
 
 fun ContactEntity.toDomain(

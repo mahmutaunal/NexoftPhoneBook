@@ -8,4 +8,5 @@ sealed class ContactsEvent {
     data class OnEditClick(val contactId: String) : ContactsEvent()
     data class OnSearchHistoryItemClick(val query: String) : ContactsEvent()
     object OnRetry : ContactsEvent()
+    object OnAddContactClick : ContactsEvent()
 }

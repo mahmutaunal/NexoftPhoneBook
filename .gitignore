@@ -73,3 +73,6 @@ Thumbs.db
 
 # Virtual machine files
 *.vmoptions
+/.gradle
+/.gradle/8.13
+.gradle/8.13/executionHistory/executionHistory.bin

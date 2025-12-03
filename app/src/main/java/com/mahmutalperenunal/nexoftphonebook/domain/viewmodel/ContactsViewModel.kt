@@ -68,8 +68,12 @@ class ContactsViewModel(
                 performSearch(query)
             }
 
-            ContactsEvent.OnRetry -> {
+            is ContactsEvent.OnRetry -> {
                 observeContacts()
+            }
+
+            is ContactsEvent.OnAddContactClick -> {
+
             }
         }
     }

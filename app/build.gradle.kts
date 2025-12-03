@@ -62,6 +62,7 @@ dependencies {
     implementation(libs.google.material)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.material.icons.extended)
 
     // Kotlin Coroutines
     implementation(libs.kotlinx.coroutines.core)

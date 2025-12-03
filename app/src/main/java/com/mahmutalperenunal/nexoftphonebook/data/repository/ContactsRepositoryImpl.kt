@@ -29,10 +29,18 @@ class ContactsRepositoryImpl(
         emit(Result.Loading)
 
         try {
-            val remoteContacts = api.getContacts()
-
-            contactsDao.clearAll()
-            contactsDao.upsertContacts(remoteContacts.map { it.toEntity() })
+            val response = api.getContacts()
+            if (response.success) {
+                val remoteContacts = response.data.users
+                contactsDao.clearAll()
+                contactsDao.upsertContacts(remoteContacts.map { it.toEntity() })
+            } else {
+                emit(
+                    Result.Error(
+                        message = response.messages?.joinToString().orEmpty()
+                    )
+                )
+            }
         } catch (e: Exception) {
             emit(Result.Error(message = e.message, throwable = e))
         }
@@ -40,14 +48,9 @@ class ContactsRepositoryImpl(
         contactsDao.getContactsFlow()
             .map { entities ->
                 val contacts = entities.map { entity ->
-                    entity.toDomain(
-                        isInDeviceContacts = false
-                    )
+                    entity.toDomain(isInDeviceContacts = false)
                 }
                 Result.Success(contacts) as Result<List<Contact>>
-            }
-            .onStart {
-                emit(Result.Loading)
             }
             .collect { result ->
                 emit(result)
@@ -61,15 +64,25 @@ class ContactsRepositoryImpl(
             val local = contactsDao.getContactById(id)
             if (local != null) {
                 emit(Result.Success(local.toDomain(isInDeviceContacts = false)))
-            } else {
-                val remote = api.getContactById(id)
-                contactsDao.upsertContact(remote.toEntity())
-                val entity = contactsDao.getContactById(id)
+                return@flow
+            }
+
+            val response = api.getContactById(id)
+            if (response.success) {
+                val dto = response.data
+                contactsDao.upsertContact(dto.toEntity())
+                val entity = contactsDao.getContactById(dto.id)
                 if (entity != null) {
                     emit(Result.Success(entity.toDomain(isInDeviceContacts = false)))
                 } else {
                     emit(Result.Error(message = "Kişi bulunamadı"))
                 }
+            } else {
+                emit(
+                    Result.Error(
+                        message = response.messages?.joinToString().orEmpty()
+                    )
+                )
             }
         } catch (e: Exception) {
             emit(Result.Error(message = e.message, throwable = e))
@@ -79,19 +92,25 @@ class ContactsRepositoryImpl(
     override suspend fun upsertContact(contact: Contact): Result<Contact> {
         return try {
             val request = CreateOrUpdateContactRequest(
-                id = contact.id.ifBlank { null },
                 firstName = contact.firstName,
                 lastName = contact.lastName,
                 phoneNumber = contact.phoneNumber,
-                photoUrl = contact.photoUrl
+                profileImageUrl = contact.photoUrl
             )
 
-            val dto = if (request.id == null) {
+            val response = if (contact.id.isBlank()) {
                 api.createContact(request)
             } else {
-                api.updateContact(request)
+                api.updateContact(contact.id, request)
             }
 
+            if (!response.success) {
+                return Result.Error(
+                    message = response.messages?.joinToString().orEmpty()
+                )
+            }
+
+            val dto = response.data
             contactsDao.upsertContact(dto.toEntity())
 
             val entity = contactsDao.getContactById(dto.id)
@@ -106,7 +125,12 @@ class ContactsRepositoryImpl(
 
     override suspend fun deleteContact(id: String): Result<Unit> {
         return try {
-            api.deleteContact(id)
+            val response = api.deleteContact(id)
+            if (!response.success) {
+                return Result.Error(
+                    message = response.messages?.joinToString().orEmpty()
+                )
+            }
             contactsDao.deleteContact(id)
             Result.Success(Unit)
         } catch (e: Exception) {
