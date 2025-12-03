@@ -3,45 +3,43 @@ package com.mahmutalperenunal.nexoftphonebook
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactsEvent
+import com.mahmutalperenunal.nexoftphonebook.domain.viewmodel.ContactsViewModel
+import com.mahmutalperenunal.nexoftphonebook.domain.viewmodel.ViewModelFactory
+import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsScreen
 import com.mahmutalperenunal.nexoftphonebook.ui.theme.NexoftPhoneBookTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val appContainer: AppContainer by lazy {
+        (application as NexoftPhoneBookApp).appContainer
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
+            val contactsViewModel: ContactsViewModel = viewModel(
+                factory = ViewModelFactory(
+                    getContactsUseCase = appContainer.getContactsUseCase,
+                    searchContactsUseCase = appContainer.searchContactsUseCase,
+                    deleteContactUseCase = appContainer.deleteContactUseCase,
+                    getSearchHistoryUseCase = appContainer.getSearchHistoryUseCase,
+                    saveSearchQueryUseCase = appContainer.saveSearchQueryUseCase
+                )
+            )
+
+            val state = contactsViewModel.state.collectAsStateWithLifecycle()
+
             NexoftPhoneBookTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                ContactsScreen(
+                    state = state.value,
+                    onEvent = { event: ContactsEvent ->
+                        contactsViewModel.onEvent(event)
+                    }
+                )
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    NexoftPhoneBookTheme {
-        Greeting("Android")
     }
 }

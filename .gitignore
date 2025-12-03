@@ -1,0 +1,75 @@
+### Android and Gradle Files ###
+# Gradle files
+.gradle
+/local.properties
+.DS_Store
+*.iml
+.idea/caches
+.idea/libraries
+.idea/modules.xml
+.idea/workspace.xml
+.idea/assetManagers.xml
+.idea/codeStyles
+.idea/vcs.xml
+.idea/gradle.xml
+
+# Build folder (output)
+/build
+/app/build
+/library_modules/*/build
+
+# Compiled code and resources
+/app/src/main/res/raw/
+/app/src/main/assets/
+/app/src/androidTest/assets/
+/app/src/androidTest/res/
+/app/src/test/assets/
+/app/src/test/res/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Local Configuration
+/app/src/debug/
+/app/src/release/
+/app/src/qa/
+/app/src/staging/
+/app/src/production/
+
+# AVD/Emulator files
+.android/avd/
+
+# Lint reports
+lint-results.xml
+lint-results.html
+
+# ProGuard/R8 configuration files (if not using version control for them)
+# Usually, they ARE version controlled, but keep them here just in case.
+# keep-rules.pro
+
+# Local SDK path and environment files
+/sdk/
+.bashrc
+.bash_profile
+.zshrc
+
+### Kotlin Symbol Processing (KSP) and KAPT ###
+# KSP and KAPT generated files
+/app/build/generated/ksp/
+/app/build/generated/ap_generated_sources/
+
+### Android Studio/IntelliJ Specific ###
+# IntelliJ/Android Studio project settings
+.idea
+*.iws
+*.ipr
+
+# Log files
+*.log
+
+# Windows thumbnail database
+Thumbs.db
+
+# Virtual machine files
+*.vmoptions
