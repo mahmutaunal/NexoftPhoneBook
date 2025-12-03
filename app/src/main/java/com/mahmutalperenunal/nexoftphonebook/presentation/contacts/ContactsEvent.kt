@@ -9,4 +9,7 @@ sealed class ContactsEvent {
     data class OnSearchHistoryItemClick(val query: String) : ContactsEvent()
     object OnRetry : ContactsEvent()
     object OnAddContactClick : ContactsEvent()
+    object OnConfirmDelete : ContactsEvent()
+    object OnDismissDelete : ContactsEvent()
+    object OnListToastShown : ContactsEvent()
 }

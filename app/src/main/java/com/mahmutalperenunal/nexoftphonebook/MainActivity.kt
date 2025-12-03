@@ -62,7 +62,10 @@ class MainActivity : ComponentActivity() {
                                         navController.navigate("contact/new")
                                     }
                                     is ContactsEvent.OnContactClick -> {
-                                        navController.navigate("contact/${event.contactId}")
+                                        navController.navigate("contact/${event.contactId}?edit=false")
+                                    }
+                                    is ContactsEvent.OnEditClick -> {
+                                        navController.navigate("contact/${event.contactId}?edit=true")
                                     }
                                     else -> contactsViewModel.onEvent(event)
                                 }
@@ -75,6 +78,7 @@ class MainActivity : ComponentActivity() {
                             factory = ContactDetailViewModel.ContactDetailViewModelFactory(
                                 isNewContact = true,
                                 contactId = null,
+                                startInEditMode = true,
                                 getContactDetailUseCase = appContainer.getContactDetailUseCase,
                                 upsertContactUseCase = appContainer.upsertContactUseCase,
                                 deleteContactUseCase = appContainer.deleteContactUseCase,
@@ -91,17 +95,23 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(
-                        route = "contact/{id}",
+                        route = "contact/{id}?edit={edit}",
                         arguments = listOf(
-                            navArgument("id") { type = NavType.StringType }
+                            navArgument("id") { type = NavType.StringType },
+                            navArgument("edit") {
+                                type = NavType.BoolType
+                                defaultValue = false
+                            }
                         )
                     ) { backStackEntry ->
                         val id = backStackEntry.arguments?.getString("id")
+                        val startInEdit = backStackEntry.arguments?.getBoolean("edit") ?: false
 
                         val vm: ContactDetailViewModel = viewModel(
                             factory = ContactDetailViewModel.ContactDetailViewModelFactory(
                                 isNewContact = false,
                                 contactId = id,
+                                startInEditMode = startInEdit,
                                 getContactDetailUseCase = appContainer.getContactDetailUseCase,
                                 upsertContactUseCase = appContainer.upsertContactUseCase,
                                 deleteContactUseCase = appContainer.deleteContactUseCase,

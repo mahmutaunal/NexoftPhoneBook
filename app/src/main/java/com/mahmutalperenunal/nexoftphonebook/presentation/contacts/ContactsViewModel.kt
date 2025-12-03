@@ -54,7 +54,14 @@ class ContactsViewModel(
             }
 
             is ContactsEvent.OnDeleteClick -> {
-                deleteContact(event.contactId)
+                val candidate = _state.value.sections
+                    .flatMap { it.items }
+                    .firstOrNull { it.id == event.contactId }
+
+                _state.value = _state.value.copy(
+                    deleteCandidate = candidate,
+                    isDeleteSheetVisible = candidate != null
+                )
             }
 
             is ContactsEvent.OnEditClick -> {
@@ -73,6 +80,22 @@ class ContactsViewModel(
 
             is ContactsEvent.OnAddContactClick -> {
 
+            }
+
+            is ContactsEvent.OnDismissDelete -> {
+                _state.value = _state.value.copy(
+                    deleteCandidate = null,
+                    isDeleteSheetVisible = false
+                )
+            }
+
+            is ContactsEvent.OnConfirmDelete -> {
+                val candidate = _state.value.deleteCandidate ?: return
+                deleteContact(candidate.id)
+            }
+
+            is ContactsEvent.OnListToastShown -> {
+                _state.value = _state.value.copy(successMessage = null)
             }
         }
     }
@@ -150,21 +173,27 @@ class ContactsViewModel(
     }
 
     // Delete a contact and expose a simple feedback message
-    private fun deleteContact(contactId: String) {
+    private fun deleteContact(id: String) {
         viewModelScope.launch {
-            when (val result = deleteContactUseCase(contactId)) {
+            _state.value = _state.value.copy(isLoading = true)
+
+            when (val result = deleteContactUseCase(id)) {
                 is Result.Success -> {
                     _state.value = _state.value.copy(
-                        errorMessage = "Kişi silindi"
+                        isLoading = false,
+                        isDeleteSheetVisible = false,
+                        deleteCandidate = null,
+                        successMessage = "User is deleted!"
                     )
                 }
-
                 is Result.Error -> {
                     _state.value = _state.value.copy(
-                        errorMessage = result.message ?: "Kişi silinirken hata oluştu"
+                        isLoading = false,
+                        isDeleteSheetVisible = false,
+                        deleteCandidate = null,
+                        errorMessage = result.message ?: "Kişi silinemedi"
                     )
                 }
-
                 Result.Loading -> Unit
             }
         }

@@ -256,7 +256,6 @@ fun ContactDetailScreen(
                 onDismiss = { onEvent(ContactDetailEvent.OnDeleteCancel) },
                 onConfirm = {
                     onEvent(ContactDetailEvent.OnDeleteConfirm)
-                    onBack()
                 }
             )
         }
@@ -484,10 +483,10 @@ private fun SuccessToast(message: String) {
     val successColor = Color(0xFF4CAF50)
 
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(12.dp),
         color = Color.White,
         tonalElevation = 8.dp,
-        shadowElevation = 8.dp
+        shadowElevation = 2.dp
     ) {
         Row(
             modifier = Modifier

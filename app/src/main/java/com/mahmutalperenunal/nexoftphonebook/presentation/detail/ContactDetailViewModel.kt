@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 class ContactDetailViewModel(
     private val isNewContact: Boolean,
     private val contactId: String?,
+    private val startInEditMode: Boolean,
     private val getContactDetailUseCase: GetContactDetailUseCase,
     private val upsertContactUseCase: UpsertContactUseCase,
     private val deleteContactUseCase: DeleteContactUseCase,
@@ -26,7 +27,7 @@ class ContactDetailViewModel(
     private val _state = MutableStateFlow(
         ContactDetailState(
             isNewContact = isNewContact,
-            isEditMode = isNewContact
+            isEditMode = isNewContact || startInEditMode
         )
     )
     val state: StateFlow<ContactDetailState> = _state
@@ -233,6 +234,7 @@ class ContactDetailViewModel(
     class ContactDetailViewModelFactory(
         private val isNewContact: Boolean,
         private val contactId: String?,
+        private val startInEditMode: Boolean,
         private val getContactDetailUseCase: GetContactDetailUseCase,
         private val upsertContactUseCase: UpsertContactUseCase,
         private val deleteContactUseCase: DeleteContactUseCase,
@@ -245,6 +247,7 @@ class ContactDetailViewModel(
                 return ContactDetailViewModel(
                     isNewContact,
                     contactId,
+                    startInEditMode,
                     getContactDetailUseCase,
                     upsertContactUseCase,
                     deleteContactUseCase,
