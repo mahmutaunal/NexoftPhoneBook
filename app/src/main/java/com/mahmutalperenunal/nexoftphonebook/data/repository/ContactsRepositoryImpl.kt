@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 // Repository implementation coordinating remote API, local database, and device storage
 class ContactsRepositoryImpl(
@@ -166,5 +169,31 @@ class ContactsRepositoryImpl(
 
     override suspend fun saveContactToDevice(contact: Contact): Result<Unit> {
         return Result.Success(Unit)
+    }
+
+    override suspend fun uploadProfileImage(
+        imageBytes: ByteArray,
+        fileName: String
+    ): Result<String> {
+        return try {
+            val requestBody = imageBytes.toRequestBody(
+                "image/*".toMediaTypeOrNull()
+            )
+            val part = MultipartBody.Part.createFormData(
+                name = "image",
+                filename = fileName,
+                body = requestBody
+            )
+
+            val response = api.uploadImage(part)
+
+            if (response.success) {
+                Result.Success(response.data.imageUrl)
+            } else {
+                Result.Error(response.messages?.joinToString(", ") ?: "Upload failed")
+            }
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Upload failed")
+        }
     }
 }

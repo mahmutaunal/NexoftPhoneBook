@@ -7,6 +7,8 @@ sealed class ContactDetailEvent {
     data class OnLastNameChange(val value: String) : ContactDetailEvent()
     data class OnPhoneNumberChange(val value: String) : ContactDetailEvent()
     data class OnPhotoUrlChange(val value: String) : ContactDetailEvent()
+    // ContactDetailEvent.kt
+    data class OnImageUploadRequested(val imageBytes: ByteArray, val fileName: String) : ContactDetailEvent()
 
     object OnToggleEdit : ContactDetailEvent()
     object OnCancelEdit : ContactDetailEvent()

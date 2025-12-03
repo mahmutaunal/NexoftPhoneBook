@@ -15,4 +15,5 @@ interface ContactsRepository {
     fun getSearchHistory(): Flow<List<SearchHistoryItem>>
     suspend fun saveSearchQuery(query: String)
     suspend fun saveContactToDevice(contact: Contact): Result<Unit>
+    suspend fun uploadProfileImage(imageBytes: ByteArray, fileName: String): Result<String>
 }

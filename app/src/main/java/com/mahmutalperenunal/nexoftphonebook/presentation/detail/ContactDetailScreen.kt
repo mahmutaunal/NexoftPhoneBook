@@ -1,5 +1,15 @@
 package com.mahmutalperenunal.nexoftphonebook.presentation.detail
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Build
+import android.net.Uri
+import android.graphics.drawable.BitmapDrawable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,6 +22,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
@@ -29,14 +40,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
+import androidx.palette.graphics.Palette
+import androidx.core.content.FileProvider
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
+import coil.ImageLoader
+import coil.request.ImageRequest
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.mahmutalperenunal.nexoftphonebook.R
+import com.mahmutalperenunal.nexoftphonebook.presentation.ui.LocalAppImageLoader
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +90,116 @@ fun ContactDetailScreen(
         }
     }
 
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+
     var showPhotoSourceSheet by remember { mutableStateOf(false) }
+
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    fun readBytesFromUri(
+        context: Context,
+        uri: Uri,
+        maxDimension: Int = 720,
+        quality: Int = 75
+    ): ByteArray? {
+        return try {
+            val boundsOptions = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, boundsOptions)
+            }
+
+            val srcWidth = boundsOptions.outWidth
+            val srcHeight = boundsOptions.outHeight
+            if (srcWidth <= 0 || srcHeight <= 0) return null
+
+            val larger = maxOf(srcWidth, srcHeight)
+            var inSampleSize = 1
+            if (larger > maxDimension) {
+                inSampleSize = larger / maxDimension
+                if (inSampleSize < 1) inSampleSize = 1
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+            }
+
+            val scaledBitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, decodeOptions)
+            } ?: return null
+
+            val output = ByteArrayOutputStream()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
+            scaledBitmap.recycle()
+
+            output.toByteArray()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        val bytes = readBytesFromUri(context, uri) ?: return@rememberLauncherForActivityResult
+        val fileName = "gallery_${UUID.randomUUID()}.jpg"
+
+        onEvent(
+            ContactDetailEvent.OnImageUploadRequested(
+                imageBytes = bytes,
+                fileName = fileName
+            )
+        )
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (!success) return@rememberLauncherForActivityResult
+        val uri = cameraImageUri ?: return@rememberLauncherForActivityResult
+        val bytes = readBytesFromUri(context, uri) ?: return@rememberLauncherForActivityResult
+        val fileName = "camera_${UUID.randomUUID()}.jpg"
+
+        onEvent(
+            ContactDetailEvent.OnImageUploadRequested(
+                imageBytes = bytes,
+                fileName = fileName
+            )
+        )
+    }
+
+    fun launchCamera() {
+        val file = File(
+            context.cacheDir,
+            "camera_${UUID.randomUUID()}.jpg"
+        )
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        cameraImageUri = uri
+        cameraLauncher.launch(uri)
+    }
+
+    fun launchGallery() {
+        galleryLauncher.launch("image/*")
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) launchCamera()
+    }
+
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) launchGallery()
+    }
 
     Box(
         modifier = Modifier
@@ -137,7 +277,13 @@ fun ContactDetailScreen(
                         cursorColor = Color.Black
                     ),
                     keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            focusManager.moveFocus(FocusDirection.Down)
+                        }
                     )
                 )
 
@@ -163,7 +309,13 @@ fun ContactDetailScreen(
                         cursorColor = Color.Black
                     ),
                     keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = {
+                            focusManager.moveFocus(FocusDirection.Down)
+                        }
                     )
                 )
 
@@ -171,7 +323,16 @@ fun ContactDetailScreen(
 
                 OutlinedTextField(
                     value = state.phoneNumber,
-                    onValueChange = { onEvent(ContactDetailEvent.OnPhoneNumberChange(it)) },
+                    onValueChange = { newValue ->
+                        val filtered = buildString {
+                            newValue.forEachIndexed { index, c ->
+                                if (c.isDigit() || (c == '+' && index == 0)) {
+                                    append(c)
+                                }
+                            }
+                        }
+                        onEvent(ContactDetailEvent.OnPhoneNumberChange(filtered))
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
@@ -189,7 +350,13 @@ fun ContactDetailScreen(
                         cursorColor = Color.Black
                     ),
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Phone
+                        keyboardType = KeyboardType.Phone,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                        }
                     )
                 )
 
@@ -213,7 +380,7 @@ fun ContactDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "This contact is already saved on your phone.",
+                                text = "This Contact Is Already Saved On Your Phone.",
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = Color.Gray
                                 )
@@ -266,9 +433,37 @@ fun ContactDetailScreen(
                 onDismiss = { showPhotoSourceSheet = false },
                 onCameraClick = {
                     showPhotoSourceSheet = false
+
+                    val hasCameraPermission = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasCameraPermission) {
+                        launchCamera()
+                    } else {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
                 },
                 onGalleryClick = {
                     showPhotoSourceSheet = false
+
+                    val storagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_IMAGES
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+
+                    val hasStoragePermission = ContextCompat.checkSelfPermission(
+                        context,
+                        storagePermission
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasStoragePermission) {
+                        launchGallery()
+                    } else {
+                        galleryPermissionLauncher.launch(storagePermission)
+                    }
                 }
             )
         }
@@ -398,6 +593,43 @@ private fun AvatarWithGlow(
     photoUrl: String?,
     showGlow: Boolean
 ) {
+    val context = LocalContext.current
+
+    var dominantColor by remember(photoUrl) {
+        mutableStateOf(Color(0xFF000000).copy(alpha = 0.15f))
+    }
+
+    LaunchedEffect(photoUrl, showGlow) {
+        if (showGlow && photoUrl != null) {
+            val resultColor = withContext(Dispatchers.IO) {
+                try {
+                    val loader = ImageLoader(context)
+                    val request = ImageRequest.Builder(context)
+                        .data(photoUrl)
+                        .allowHardware(false)
+                        .build()
+                    val result = loader.execute(request)
+                    val bitmap = (result.drawable as? BitmapDrawable)?.bitmap ?: return@withContext null
+
+                    val palette = Palette.from(bitmap).generate()
+                    val swatch = palette.vibrantSwatch
+                        ?: palette.lightVibrantSwatch
+                        ?: palette.dominantSwatch
+
+                    swatch?.rgb?.let { rgb -> Color(rgb) }
+                } catch (_: Exception) {
+                    null
+                }
+            }
+
+            resultColor?.let { color ->
+                dominantColor = color.copy(alpha = 0.35f)
+            }
+        } else {
+            dominantColor = Color(0xFF000000).copy(alpha = 0.15f)
+        }
+    }
+
     Box(
         modifier = Modifier.size(120.dp),
         contentAlignment = Alignment.Center
@@ -410,7 +642,7 @@ private fun AvatarWithGlow(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color(0xFF000000).copy(alpha = 0.6f),
+                                dominantColor,
                                 Color.Transparent
                             )
                         )
@@ -419,8 +651,11 @@ private fun AvatarWithGlow(
         }
 
         if (photoUrl != null) {
+            val imageLoader = LocalAppImageLoader.current
+
             AsyncImage(
                 model = photoUrl,
+                imageLoader = imageLoader,
                 contentDescription = null,
                 modifier = Modifier
                     .size(80.dp)
@@ -548,7 +783,7 @@ private fun DeleteConfirmationBottomSheet(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Are you sure you want to delete this contact?",
+                text = "Are You Sure You Want To Delete This Contact?",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
             )
@@ -664,9 +899,20 @@ private fun PhotoSourceBottomSheet(
 private fun NewContactDoneScreen(
     onFinished: () -> Unit
 ) {
-    LaunchedEffect(Unit) {
-        delay(1500)
-        onFinished()
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.done)
+    )
+
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = 1
+    )
+
+    LaunchedEffect(progress) {
+        if (progress >= 1f) {
+            delay(200)
+            onFinished()
+        }
     }
 
     Box(
@@ -679,18 +925,15 @@ private fun NewContactDoneScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF4CAF50)),
+                modifier = Modifier.size(120.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(48.dp)
-                )
+                if (composition != null) {
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { progress }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -705,7 +948,7 @@ private fun NewContactDoneScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "New contact saved 🎉",
+                text = "New Contact Saved 🎉",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = Color.Gray
                 )

@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.palette)
 
     // Kotlin Coroutines
     implementation(libs.kotlinx.coroutines.core)
@@ -88,6 +89,9 @@ dependencies {
     // Splash Screen
     implementation(libs.splashscreen)
     implementation(libs.accompanist.systemuicontroller)
+
+    // Lottie
+    implementation(libs.lottie.compose)
 
     // Test Dependencies
     testImplementation(libs.junit)

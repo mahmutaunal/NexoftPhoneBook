@@ -6,6 +6,7 @@ import com.mahmutalperenunal.nexoftphonebook.data.local.db.AppDatabase
 import com.mahmutalperenunal.nexoftphonebook.data.remote.service.ContactsApiService
 import com.mahmutalperenunal.nexoftphonebook.data.repository.ContactsRepositoryImpl
 import com.mahmutalperenunal.nexoftphonebook.domain.repository.ContactsRepository
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.UploadProfileImageUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.DeleteContactUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactDetailUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactsUseCase
@@ -74,4 +75,6 @@ class AppContainer(context: Context) {
     val getContactDetailUseCase = GetContactDetailUseCase(contactsRepository)
     val upsertContactUseCase = UpsertContactUseCase(contactsRepository)
     val saveContactToDeviceUseCase = SaveContactToDeviceUseCase(contactsRepository)
+    // AppContainer.kt
+    val uploadProfileImageUseCase = UploadProfileImageUseCase(contactsRepository)
 }

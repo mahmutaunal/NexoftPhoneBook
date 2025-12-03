@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactSectionUiModel
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactUiModel
+import com.mahmutalperenunal.nexoftphonebook.presentation.ui.LocalAppImageLoader
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
@@ -483,8 +484,11 @@ private fun SwipeableContactRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (contact.photoUrl != null) {
+                    val imageLoader = LocalAppImageLoader.current
+
                     AsyncImage(
                         model = contact.photoUrl,
+                        imageLoader = imageLoader,
                         contentDescription = null,
                         modifier = Modifier
                             .size(40.dp)

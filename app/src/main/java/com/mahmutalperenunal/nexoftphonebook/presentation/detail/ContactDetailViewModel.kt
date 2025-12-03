@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.mahmutalperenunal.nexoftphonebook.domain.entity.Contact
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.UploadProfileImageUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.DeleteContactUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactDetailUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.UpsertContactUseCase
@@ -17,11 +18,12 @@ import kotlinx.coroutines.launch
 class ContactDetailViewModel(
     private val isNewContact: Boolean,
     private val contactId: String?,
-    private val startInEditMode: Boolean,
+    startInEditMode: Boolean,
     private val getContactDetailUseCase: GetContactDetailUseCase,
     private val upsertContactUseCase: UpsertContactUseCase,
     private val deleteContactUseCase: DeleteContactUseCase,
-    private val saveContactToDeviceUseCase: SaveContactToDeviceUseCase
+    private val saveContactToDeviceUseCase: SaveContactToDeviceUseCase,
+    private val uploadProfileImageUseCase: UploadProfileImageUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -53,6 +55,9 @@ class ContactDetailViewModel(
 
             is ContactDetailEvent.OnPhotoUrlChange ->
                 _state.value = _state.value.copy(photoUrl = event.value)
+
+            is ContactDetailEvent.OnImageUploadRequested ->
+                uploadImage(event.imageBytes, event.fileName)
 
             ContactDetailEvent.OnToggleEdit ->
                 _state.value = _state.value.copy(isEditMode = true)
@@ -231,6 +236,29 @@ class ContactDetailViewModel(
         }
     }
 
+    private fun uploadImage(imageBytes: ByteArray, fileName: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true, errorMessage = null)
+
+            when (val result = uploadProfileImageUseCase(imageBytes, fileName)) {
+                is Result.Success -> {
+                    val url = result.data
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        photoUrl = url
+                    )
+                }
+                is Result.Error -> {
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        errorMessage = result.message ?: "Image upload failed"
+                    )
+                }
+                Result.Loading -> Unit
+            }
+        }
+    }
+
     class ContactDetailViewModelFactory(
         private val isNewContact: Boolean,
         private val contactId: String?,
@@ -238,7 +266,8 @@ class ContactDetailViewModel(
         private val getContactDetailUseCase: GetContactDetailUseCase,
         private val upsertContactUseCase: UpsertContactUseCase,
         private val deleteContactUseCase: DeleteContactUseCase,
-        private val saveContactToDeviceUseCase: SaveContactToDeviceUseCase
+        private val saveContactToDeviceUseCase: SaveContactToDeviceUseCase,
+        private val uploadProfileImageUseCase: UploadProfileImageUseCase
     ) : ViewModelProvider.Factory {
 
         @Suppress("UNCHECKED_CAST")
@@ -251,7 +280,8 @@ class ContactDetailViewModel(
                     getContactDetailUseCase,
                     upsertContactUseCase,
                     deleteContactUseCase,
-                    saveContactToDeviceUseCase
+                    saveContactToDeviceUseCase,
+                    uploadProfileImageUseCase
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

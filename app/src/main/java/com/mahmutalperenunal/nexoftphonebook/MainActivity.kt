@@ -22,6 +22,7 @@ import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsScree
 import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsViewModel
 import com.mahmutalperenunal.nexoftphonebook.presentation.detail.ContactDetailScreen
 import com.mahmutalperenunal.nexoftphonebook.presentation.detail.ContactDetailViewModel
+import com.mahmutalperenunal.nexoftphonebook.presentation.ui.ProvideAppImageLoader
 import com.mahmutalperenunal.nexoftphonebook.ui.theme.NexoftPhoneBookTheme
 
 class MainActivity : ComponentActivity() {
@@ -34,99 +35,106 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         installSplashScreen()
         setContent {
-            NexoftPhoneBookTheme {
-                SetupSystemBars()
-                val navController = rememberNavController()
+            ProvideAppImageLoader {
+                NexoftPhoneBookTheme {
+                    SetupSystemBars()
+                    val navController = rememberNavController()
 
-                NavHost(
-                    navController = navController,
-                    startDestination = "contacts"
-                ) {
-                    composable("contacts") {
-                        val contactsViewModel: ContactsViewModel = viewModel(
-                            factory = ContactsViewModel.ContactsViewModelFactory(
-                                getContactsUseCase = appContainer.getContactsUseCase,
-                                searchContactsUseCase = appContainer.searchContactsUseCase,
-                                deleteContactUseCase = appContainer.deleteContactUseCase,
-                                getSearchHistoryUseCase = appContainer.getSearchHistoryUseCase,
-                                saveSearchQueryUseCase = appContainer.saveSearchQueryUseCase
+                    NavHost(
+                        navController = navController,
+                        startDestination = "contacts"
+                    ) {
+                        composable("contacts") {
+                            val contactsViewModel: ContactsViewModel = viewModel(
+                                factory = ContactsViewModel.ContactsViewModelFactory(
+                                    getContactsUseCase = appContainer.getContactsUseCase,
+                                    searchContactsUseCase = appContainer.searchContactsUseCase,
+                                    deleteContactUseCase = appContainer.deleteContactUseCase,
+                                    getSearchHistoryUseCase = appContainer.getSearchHistoryUseCase,
+                                    saveSearchQueryUseCase = appContainer.saveSearchQueryUseCase
+                                )
                             )
-                        )
-                        val state by contactsViewModel.state.collectAsStateWithLifecycle()
+                            val state by contactsViewModel.state.collectAsStateWithLifecycle()
 
-                        ContactsScreen(
-                            state = state,
-                            onEvent = { event ->
-                                when (event) {
-                                    is ContactsEvent.OnAddContactClick -> {
-                                        navController.navigate("contact/new")
+                            ContactsScreen(
+                                state = state,
+                                onEvent = { event ->
+                                    when (event) {
+                                        is ContactsEvent.OnAddContactClick -> {
+                                            navController.navigate("contact/new")
+                                        }
+
+                                        is ContactsEvent.OnContactClick -> {
+                                            navController.navigate("contact/${event.contactId}?edit=false")
+                                        }
+
+                                        is ContactsEvent.OnEditClick -> {
+                                            navController.navigate("contact/${event.contactId}?edit=true")
+                                        }
+
+                                        else -> contactsViewModel.onEvent(event)
                                     }
-                                    is ContactsEvent.OnContactClick -> {
-                                        navController.navigate("contact/${event.contactId}?edit=false")
-                                    }
-                                    is ContactsEvent.OnEditClick -> {
-                                        navController.navigate("contact/${event.contactId}?edit=true")
-                                    }
-                                    else -> contactsViewModel.onEvent(event)
                                 }
-                            }
-                        )
-                    }
-
-                    composable("contact/new") {
-                        val vm: ContactDetailViewModel = viewModel(
-                            factory = ContactDetailViewModel.ContactDetailViewModelFactory(
-                                isNewContact = true,
-                                contactId = null,
-                                startInEditMode = true,
-                                getContactDetailUseCase = appContainer.getContactDetailUseCase,
-                                upsertContactUseCase = appContainer.upsertContactUseCase,
-                                deleteContactUseCase = appContainer.deleteContactUseCase,
-                                saveContactToDeviceUseCase = appContainer.saveContactToDeviceUseCase
                             )
-                        )
-                        val state by vm.state.collectAsStateWithLifecycle()
+                        }
 
-                        ContactDetailScreen(
-                            state = state,
-                            onEvent = vm::onEvent,
-                            onBack = { navController.popBackStack() }
-                        )
-                    }
-
-                    composable(
-                        route = "contact/{id}?edit={edit}",
-                        arguments = listOf(
-                            navArgument("id") { type = NavType.StringType },
-                            navArgument("edit") {
-                                type = NavType.BoolType
-                                defaultValue = false
-                            }
-                        )
-                    ) { backStackEntry ->
-                        val id = backStackEntry.arguments?.getString("id")
-                        val startInEdit = backStackEntry.arguments?.getBoolean("edit") ?: false
-
-                        val vm: ContactDetailViewModel = viewModel(
-                            factory = ContactDetailViewModel.ContactDetailViewModelFactory(
-                                isNewContact = false,
-                                contactId = id,
-                                startInEditMode = startInEdit,
-                                getContactDetailUseCase = appContainer.getContactDetailUseCase,
-                                upsertContactUseCase = appContainer.upsertContactUseCase,
-                                deleteContactUseCase = appContainer.deleteContactUseCase,
-                                saveContactToDeviceUseCase = appContainer.saveContactToDeviceUseCase
+                        composable("contact/new") {
+                            val vm: ContactDetailViewModel = viewModel(
+                                factory = ContactDetailViewModel.ContactDetailViewModelFactory(
+                                    isNewContact = true,
+                                    contactId = null,
+                                    startInEditMode = true,
+                                    getContactDetailUseCase = appContainer.getContactDetailUseCase,
+                                    upsertContactUseCase = appContainer.upsertContactUseCase,
+                                    deleteContactUseCase = appContainer.deleteContactUseCase,
+                                    saveContactToDeviceUseCase = appContainer.saveContactToDeviceUseCase,
+                                    uploadProfileImageUseCase = appContainer.uploadProfileImageUseCase
+                                )
                             )
-                        )
-                        val state by vm.state.collectAsStateWithLifecycle()
+                            val state by vm.state.collectAsStateWithLifecycle()
 
-                        ContactDetailScreen(
-                            state = state,
-                            onEvent = { event ->
-                                vm.onEvent(event)
-                            },
-                            onBack = { navController.popBackStack() }
-                        )
+                            ContactDetailScreen(
+                                state = state,
+                                onEvent = vm::onEvent,
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable(
+                            route = "contact/{id}?edit={edit}",
+                            arguments = listOf(
+                                navArgument("id") { type = NavType.StringType },
+                                navArgument("edit") {
+                                    type = NavType.BoolType
+                                    defaultValue = false
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val id = backStackEntry.arguments?.getString("id")
+                            val startInEdit = backStackEntry.arguments?.getBoolean("edit") ?: false
+
+                            val vm: ContactDetailViewModel = viewModel(
+                                factory = ContactDetailViewModel.ContactDetailViewModelFactory(
+                                    isNewContact = false,
+                                    contactId = id,
+                                    startInEditMode = startInEdit,
+                                    getContactDetailUseCase = appContainer.getContactDetailUseCase,
+                                    upsertContactUseCase = appContainer.upsertContactUseCase,
+                                    deleteContactUseCase = appContainer.deleteContactUseCase,
+                                    saveContactToDeviceUseCase = appContainer.saveContactToDeviceUseCase,
+                                    uploadProfileImageUseCase = appContainer.uploadProfileImageUseCase
+                                )
+                            )
+                            val state by vm.state.collectAsStateWithLifecycle()
+
+                            ContactDetailScreen(
+                                state = state,
+                                onEvent = { event ->
+                                    vm.onEvent(event)
+                                },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }
