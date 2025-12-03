@@ -7,7 +7,10 @@ import com.mahmutalperenunal.nexoftphonebook.data.remote.service.ContactsApiServ
 import com.mahmutalperenunal.nexoftphonebook.data.repository.ContactsRepositoryImpl
 import com.mahmutalperenunal.nexoftphonebook.domain.repository.ContactsRepository
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.DeleteContactUseCase
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactDetailUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactsUseCase
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.UpsertContactUseCase
+import com.mahmutalperenunal.nexoftphonebook.domain.usecase.device.SaveContactToDeviceUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.GetSearchHistoryUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.SaveSearchQueryUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.SearchContactsUseCase
@@ -68,4 +71,7 @@ class AppContainer(context: Context) {
     val deleteContactUseCase = DeleteContactUseCase(contactsRepository)
     val getSearchHistoryUseCase = GetSearchHistoryUseCase(contactsRepository)
     val saveSearchQueryUseCase = SaveSearchQueryUseCase(contactsRepository)
+    val getContactDetailUseCase = GetContactDetailUseCase(contactsRepository)
+    val upsertContactUseCase = UpsertContactUseCase(contactsRepository)
+    val saveContactToDeviceUseCase = SaveContactToDeviceUseCase(contactsRepository)
 }

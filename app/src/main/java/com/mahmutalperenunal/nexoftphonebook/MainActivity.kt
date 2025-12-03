@@ -3,12 +3,25 @@ package com.mahmutalperenunal.nexoftphonebook
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactsEvent
-import com.mahmutalperenunal.nexoftphonebook.domain.viewmodel.ContactsViewModel
-import com.mahmutalperenunal.nexoftphonebook.domain.viewmodel.ViewModelFactory
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsEvent
 import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsScreen
+import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsViewModel
+import com.mahmutalperenunal.nexoftphonebook.presentation.detail.ContactDetailScreen
+import com.mahmutalperenunal.nexoftphonebook.presentation.detail.ContactDetailViewModel
 import com.mahmutalperenunal.nexoftphonebook.ui.theme.NexoftPhoneBookTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,27 +32,111 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installSplashScreen()
         setContent {
-            val contactsViewModel: ContactsViewModel = viewModel(
-                factory = ViewModelFactory(
-                    getContactsUseCase = appContainer.getContactsUseCase,
-                    searchContactsUseCase = appContainer.searchContactsUseCase,
-                    deleteContactUseCase = appContainer.deleteContactUseCase,
-                    getSearchHistoryUseCase = appContainer.getSearchHistoryUseCase,
-                    saveSearchQueryUseCase = appContainer.saveSearchQueryUseCase
-                )
-            )
-
-            val state = contactsViewModel.state.collectAsStateWithLifecycle()
-
             NexoftPhoneBookTheme {
-                ContactsScreen(
-                    state = state.value,
-                    onEvent = { event: ContactsEvent ->
-                        contactsViewModel.onEvent(event)
+                SetupSystemBars()
+                val navController = rememberNavController()
+
+                NavHost(
+                    navController = navController,
+                    startDestination = "contacts"
+                ) {
+                    composable("contacts") {
+                        val contactsViewModel: ContactsViewModel = viewModel(
+                            factory = ContactsViewModel.ContactsViewModelFactory(
+                                getContactsUseCase = appContainer.getContactsUseCase,
+                                searchContactsUseCase = appContainer.searchContactsUseCase,
+                                deleteContactUseCase = appContainer.deleteContactUseCase,
+                                getSearchHistoryUseCase = appContainer.getSearchHistoryUseCase,
+                                saveSearchQueryUseCase = appContainer.saveSearchQueryUseCase
+                            )
+                        )
+                        val state by contactsViewModel.state.collectAsStateWithLifecycle()
+
+                        ContactsScreen(
+                            state = state,
+                            onEvent = { event ->
+                                when (event) {
+                                    is ContactsEvent.OnAddContactClick -> {
+                                        navController.navigate("contact/new")
+                                    }
+                                    is ContactsEvent.OnContactClick -> {
+                                        navController.navigate("contact/${event.contactId}")
+                                    }
+                                    else -> contactsViewModel.onEvent(event)
+                                }
+                            }
+                        )
                     }
-                )
+
+                    composable("contact/new") {
+                        val vm: ContactDetailViewModel = viewModel(
+                            factory = ContactDetailViewModel.ContactDetailViewModelFactory(
+                                isNewContact = true,
+                                contactId = null,
+                                getContactDetailUseCase = appContainer.getContactDetailUseCase,
+                                upsertContactUseCase = appContainer.upsertContactUseCase,
+                                deleteContactUseCase = appContainer.deleteContactUseCase,
+                                saveContactToDeviceUseCase = appContainer.saveContactToDeviceUseCase
+                            )
+                        )
+                        val state by vm.state.collectAsStateWithLifecycle()
+
+                        ContactDetailScreen(
+                            state = state,
+                            onEvent = vm::onEvent,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable(
+                        route = "contact/{id}",
+                        arguments = listOf(
+                            navArgument("id") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val id = backStackEntry.arguments?.getString("id")
+
+                        val vm: ContactDetailViewModel = viewModel(
+                            factory = ContactDetailViewModel.ContactDetailViewModelFactory(
+                                isNewContact = false,
+                                contactId = id,
+                                getContactDetailUseCase = appContainer.getContactDetailUseCase,
+                                upsertContactUseCase = appContainer.upsertContactUseCase,
+                                deleteContactUseCase = appContainer.deleteContactUseCase,
+                                saveContactToDeviceUseCase = appContainer.saveContactToDeviceUseCase
+                            )
+                        )
+                        val state by vm.state.collectAsStateWithLifecycle()
+
+                        ContactDetailScreen(
+                            state = state,
+                            onEvent = { event ->
+                                vm.onEvent(event)
+                            },
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+fun SetupSystemBars() {
+    val systemUiController = rememberSystemUiController()
+    val useDarkIcons = !isSystemInDarkTheme()
+
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = Color.Transparent,
+            darkIcons = useDarkIcons
+        )
+        systemUiController.setNavigationBarColor(
+            color = Color.Transparent,
+            darkIcons = useDarkIcons
+        )
     }
 }

@@ -21,8 +21,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "BASE_URL", "\"http://146.59.52.68:11235/\"")
-        buildConfigField("String", "API_KEY", "\"d2470678-8b53-4e72-9480-6da4725d22a3\"")
+        buildConfigField("String", "BASE_URL", "\"YOUR_BASE_URL\"")
+        buildConfigField("String", "API_KEY", "\"YOUR_API_KEY\"")
     }
 
     buildTypes {
@@ -63,6 +63,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.material.icons.extended)
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.androidx.navigation.compose)
 
     // Kotlin Coroutines
     implementation(libs.kotlinx.coroutines.core)
@@ -81,6 +84,10 @@ dependencies {
 
     // Coil (Image Loading)
     implementation(libs.coil.compose)
+
+    // Splash Screen
+    implementation(libs.splashscreen)
+    implementation(libs.accompanist.systemuicontroller)
 
     // Test Dependencies
     testImplementation(libs.junit)

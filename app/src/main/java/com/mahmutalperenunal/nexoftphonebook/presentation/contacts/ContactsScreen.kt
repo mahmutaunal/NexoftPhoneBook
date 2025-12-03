@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -43,8 +44,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactSectionUiModel
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactUiModel
-import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactsEvent
-import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactsState
 
 @Composable
 fun ContactsScreen(
@@ -65,6 +64,7 @@ fun ContactsScreen(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Header
             Row(
@@ -81,7 +81,7 @@ fun ContactsScreen(
 
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(24.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary)
                         .clickable { onEvent(ContactsEvent.OnAddContactClick) },
@@ -104,16 +104,31 @@ fun ContactsScreen(
                 modifier = Modifier
                     .fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(24.dp),
                 placeholder = {
-                    Text(text = "Search by name")
+                    Text(
+                        text = "Search by name",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    )
                 },
                 leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = null)
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    )
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent,
+                    errorBorderColor = Color.Transparent,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.onSurface
                 ),
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Search
@@ -240,29 +255,55 @@ private fun ContactsList(
         modifier = Modifier.fillMaxSize()
     ) {
         sections.forEach { section ->
-            item(key = "header_${section.title}") {
-                Text(
-                    text = section.title,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
+
+            // Single card that contains all contacts for this letter
+            item(key = "section_${section.title}_card") {
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 4.dp, bottom = 8.dp, top = 8.dp)
-                )
-            }
+                        .padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.elevatedCardElevation(
+                        defaultElevation = 0.dp
+                    )
+                ) {
+                    Column {
+                        Text(
+                            text = section.title,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                        )
+                        Divider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                        )
+                        section.items.forEachIndexed { index, contact ->
+                            ContactRow(
+                                contact = contact,
+                                onClick = { onContactClick(contact.id) }
+                            )
 
-            items(
-                items = section.items,
-                key = { it.id }
-            ) { contact ->
-                ContactRow(
-                    contact = contact,
-                    onClick = { onContactClick(contact.id) }
-                )
-            }
+                            // Divider between contacts, but not after the last one
+                            if (index < section.items.lastIndex) {
+                                Divider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 1.dp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                                )
+                            }
+                        }
+                    }
+                }
 
-            item {
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
@@ -274,68 +315,55 @@ private fun ContactRow(
     contact: ContactUiModel,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = 2.dp
-        )
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onClick() }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (contact.photoUrl != null) {
-                AsyncImage(
-                    model = contact.photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = contact.displayName.firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
+        if (contact.photoUrl != null) {
+            AsyncImage(
+                model = contact.photoUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = contact.displayName,
+                    text = contact.displayName.firstOrNull()?.uppercase() ?: "?",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.SemiBold
                     )
                 )
-                Text(
-                    text = contact.phoneNumber,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                )
             }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = contact.displayName,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            Text(
+                text = contact.phoneNumber,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            )
         }
     }
 }
