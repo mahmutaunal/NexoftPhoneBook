@@ -2,6 +2,7 @@ package com.mahmutalperenunal.nexoftphonebook.data.repository
 
 import com.mahmutalperenunal.nexoftphonebook.data.local.db.ContactsDao
 import com.mahmutalperenunal.nexoftphonebook.data.local.db.SearchHistoryDao
+import com.mahmutalperenunal.nexoftphonebook.data.local.device.DeviceContactsManager
 import com.mahmutalperenunal.nexoftphonebook.data.local.entity.SearchHistoryEntity
 import com.mahmutalperenunal.nexoftphonebook.data.mapper.toDomain
 import com.mahmutalperenunal.nexoftphonebook.data.mapper.toEntity
@@ -23,18 +24,70 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class ContactsRepositoryImpl(
     private val api: ContactsApiService,
     private val contactsDao: ContactsDao,
-    private val searchHistoryDao: SearchHistoryDao
+    private val searchHistoryDao: SearchHistoryDao,
+    private val deviceContactsManager: DeviceContactsManager
 ) : ContactsRepository {
 
     override fun getContacts(): Flow<Result<List<Contact>>> = flow {
         emit(Result.Loading)
 
         try {
+            val existingEntities = contactsDao.getContactsOnce()
+            val existingById = existingEntities.associateBy { it.id }
+
+            var deviceContacts: List<DeviceContactsManager.DeviceContactSnapshot>
+            var canReadDeviceContacts: Boolean
+
+            try {
+                deviceContacts = deviceContactsManager.getDeviceContactsSnapshot()
+                canReadDeviceContacts = true
+            } catch (_: SecurityException) {
+                deviceContacts = emptyList()
+                canReadDeviceContacts = false
+            }
+
+            val deviceIndex: Set<Pair<String, String>> = deviceContacts
+                .map { it.normalizedPhone to it.displayNameLower }
+                .toSet()
+
             val response = api.getContacts()
             if (response.success) {
                 val remoteContacts = response.data.users
+
+                val mergedEntities = remoteContacts.map { dto ->
+                    val base = dto.toEntity()
+                    val existing = existingById[base.id]
+
+                    val preservedFlag = existing?.isInDeviceContacts ?: base.isInDeviceContacts
+
+                    val remoteDisplayName = listOfNotNull(
+                        base.firstName,
+                        base.lastName
+                    )
+                        .joinToString(" ")
+                        .trim()
+                        .lowercase()
+
+                    val normalizedPhone = deviceContactsManager.normalizeNumberPublic(base.phoneNumber)
+
+                    val inDeviceByPhoneAndName =
+                        normalizedPhone.isNotEmpty() &&
+                                remoteDisplayName.isNotEmpty() &&
+                                deviceIndex.contains(
+                                    normalizedPhone to remoteDisplayName
+                                )
+
+                    val finalFlag = if (canReadDeviceContacts) {
+                        inDeviceByPhoneAndName
+                    } else {
+                        preservedFlag
+                    }
+
+                    base.copy(isInDeviceContacts = finalFlag)
+                }
+
                 contactsDao.clearAll()
-                contactsDao.upsertContacts(remoteContacts.map { it.toEntity() })
+                contactsDao.upsertContacts(mergedEntities)
             } else {
                 emit(
                     Result.Error(
@@ -48,9 +101,7 @@ class ContactsRepositoryImpl(
 
         contactsDao.getContactsFlow()
             .map { entities ->
-                val contacts = entities.map { entity ->
-                    entity.toDomain(isInDeviceContacts = false)
-                }
+                val contacts = entities.map { it.toDomain() }
                 Result.Success(contacts) as Result<List<Contact>>
             }
             .collect { result ->
@@ -64,19 +115,27 @@ class ContactsRepositoryImpl(
         try {
             val local = contactsDao.getContactById(id)
             if (local != null) {
-                emit(Result.Success(local.toDomain(isInDeviceContacts = false)))
+                emit(Result.Success(local.toDomain()))
                 return@flow
             }
 
             val response = api.getContactById(id)
             if (response.success) {
                 val dto = response.data
-                contactsDao.upsertContact(dto.toEntity())
+
+                val existing = contactsDao.getContactById(dto.id)
+                val baseEntity = dto.toEntity()
+                val mergedEntity = baseEntity.copy(
+                    isInDeviceContacts = existing?.isInDeviceContacts ?: baseEntity.isInDeviceContacts
+                )
+
+                contactsDao.upsertContact(mergedEntity)
+
                 val entity = contactsDao.getContactById(dto.id)
                 if (entity != null) {
-                    emit(Result.Success(entity.toDomain(isInDeviceContacts = false)))
+                    emit(Result.Success(entity.toDomain()))
                 } else {
-                    emit(Result.Error(message = "Kişi bulunamadı"))
+                    emit(Result.Error(message = "Person Not Found"))
                 }
             } else {
                 emit(
@@ -112,11 +171,17 @@ class ContactsRepositoryImpl(
             }
 
             val dto = response.data
-            contactsDao.upsertContact(dto.toEntity())
+
+            val existing = contactsDao.getContactById(dto.id)
+            val baseEntity = dto.toEntity()
+            val mergedEntity = baseEntity.copy(
+                isInDeviceContacts = existing?.isInDeviceContacts ?: baseEntity.isInDeviceContacts
+            )
+
+            contactsDao.upsertContact(mergedEntity)
 
             val entity = contactsDao.getContactById(dto.id)
-            val domain = entity?.toDomain(isInDeviceContacts = false)
-                ?: contact.copy(id = dto.id)
+            val domain = entity?.toDomain() ?: contact.copy(id = dto.id)
 
             Result.Success(domain)
         } catch (e: Exception) {
@@ -143,7 +208,7 @@ class ContactsRepositoryImpl(
         val likeQuery = "%${query.trim()}%"
         return contactsDao.searchContactsFlow(likeQuery)
             .map { entities ->
-                val contacts = entities.map { it.toDomain(isInDeviceContacts = false) }
+                val contacts = entities.map { it.toDomain() }
                 Result.Success(contacts) as Result<List<Contact>>
             }
             .onStart {
@@ -165,8 +230,24 @@ class ContactsRepositoryImpl(
         searchHistoryDao.insert(entity)
     }
 
-    override suspend fun saveContactToDevice(contact: Contact): Result<Unit> {
-        return Result.Success(Unit)
+    override suspend fun saveContactToDevice(contact: Contact, photoBytes: ByteArray?): Result<Unit> {
+        return try {
+            deviceContactsManager.saveContactToDevice(
+                firstName = contact.firstName,
+                lastName = contact.lastName,
+                phoneNumber = contact.phoneNumber,
+                photoBytes = photoBytes
+            )
+
+            contactsDao.updateDeviceContactFlag(
+                id = contact.id,
+                isInDeviceContacts = true
+            )
+
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(message = e.message, throwable = e)
+        }
     }
 
     override suspend fun uploadProfileImage(
@@ -201,5 +282,12 @@ class ContactsRepositoryImpl(
 
     override suspend fun clearSearchHistory() {
         searchHistoryDao.clearAll()
+    }
+
+    override suspend fun markAsSavedInDevice(contactId: String) {
+        contactsDao.updateDeviceContactFlag(
+            id = contactId,
+            isInDeviceContacts = true
+        )
     }
 }

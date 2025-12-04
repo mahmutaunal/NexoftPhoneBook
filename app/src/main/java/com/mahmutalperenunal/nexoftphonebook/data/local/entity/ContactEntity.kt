@@ -9,5 +9,6 @@ data class ContactEntity(
     val firstName: String,
     val lastName: String,
     val phoneNumber: String,
-    val photoUrl: String?
+    val photoUrl: String?,
+    val isInDeviceContacts: Boolean = false
 )

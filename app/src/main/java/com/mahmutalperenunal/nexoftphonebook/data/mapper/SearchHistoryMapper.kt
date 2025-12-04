@@ -9,10 +9,3 @@ fun SearchHistoryEntity.toDomain(): SearchHistoryItem =
         query = query,
         createdAt = createdAt
     )
-
-fun SearchHistoryItem.toEntity(): SearchHistoryEntity =
-    SearchHistoryEntity(
-        id = id,
-        query = query,
-        createdAt = createdAt
-    )

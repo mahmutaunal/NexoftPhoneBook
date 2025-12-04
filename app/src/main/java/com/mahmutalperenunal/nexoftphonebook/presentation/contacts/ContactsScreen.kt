@@ -1,5 +1,9 @@
 package com.mahmutalperenunal.nexoftphonebook.presentation.contacts
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -36,6 +40,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -65,6 +70,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +78,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.mahmutalperenunal.nexoftphonebook.domain.entity.SearchHistoryItem
 import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactSectionUiModel
@@ -87,10 +94,36 @@ fun ContactsScreen(
 ) {
     val hasContacts = state.sections.any { it.items.isNotEmpty() }
 
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
     var isSearchFocused by remember { mutableStateOf(false) }
     var isDebouncing by remember { mutableStateOf(false) }
+
+    val hasRequestedContactsPermission = remember { mutableStateOf(false) }
+
+    val readContactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            onEvent(ContactsEvent.OnRetry)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasRequestedContactsPermission.value) {
+            val hasReadPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_CONTACTS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasReadPermission) {
+                readContactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+            }
+
+            hasRequestedContactsPermission.value = true
+        }
+    }
 
     LaunchedEffect(state.searchQuery) {
         // Start debounce loading
@@ -109,7 +142,9 @@ fun ContactsScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -348,7 +383,6 @@ fun ContactsScreen(
                     )
                 }
             }
-
         }
     }
 }
@@ -590,31 +624,56 @@ private fun SwipeableContactRow(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (contact.photoUrl != null) {
-                    val imageLoader = LocalAppImageLoader.current
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (contact.photoUrl != null) {
+                        val imageLoader = LocalAppImageLoader.current
 
-                    AsyncImage(
-                        model = contact.photoUrl,
-                        imageLoader = imageLoader,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = contact.displayName.firstOrNull()?.uppercase() ?: "?",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.SemiBold
-                            )
+                        AsyncImage(
+                            model = contact.photoUrl,
+                            imageLoader = imageLoader,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(CircleShape)
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(CircleShape)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = contact.displayName.firstOrNull()?.uppercase() ?: "?",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                    }
+
+                    if (contact.isInDeviceContacts) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1E88E5)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Saved in phone",
+                                tint = Color.White,
+                                modifier = Modifier.size(10.dp)
+                            )
+                        }
                     }
                 }
 
@@ -907,31 +966,54 @@ private fun SimpleContactRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (contact.photoUrl != null) {
-            val imageLoader = LocalAppImageLoader.current
+        Box(
+            modifier = Modifier.size(40.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (contact.photoUrl != null) {
+                val imageLoader = LocalAppImageLoader.current
 
-            AsyncImage(
-                model = contact.photoUrl,
-                imageLoader = imageLoader,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = contact.displayName.firstOrNull()?.uppercase() ?: "?",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.SemiBold
-                    )
+                AsyncImage(
+                    model = contact.photoUrl,
+                    imageLoader = imageLoader,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(CircleShape)
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = contact.displayName.firstOrNull()?.uppercase() ?: "?",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+            }
+
+            if (contact.isInDeviceContacts) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1E88E5)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "Saved in phone",
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                }
             }
         }
 

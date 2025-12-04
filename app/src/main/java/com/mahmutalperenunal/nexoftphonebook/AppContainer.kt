@@ -3,6 +3,7 @@ package com.mahmutalperenunal.nexoftphonebook
 import android.content.Context
 import androidx.room.Room
 import com.mahmutalperenunal.nexoftphonebook.data.local.db.AppDatabase
+import com.mahmutalperenunal.nexoftphonebook.data.local.device.DeviceContactsManager
 import com.mahmutalperenunal.nexoftphonebook.data.remote.service.ContactsApiService
 import com.mahmutalperenunal.nexoftphonebook.data.repository.ContactsRepositoryImpl
 import com.mahmutalperenunal.nexoftphonebook.domain.repository.ContactsRepository
@@ -61,11 +62,16 @@ class AppContainer(context: Context) {
     private val contactsDao = appDatabase.contactsDao()
     private val searchHistoryDao = appDatabase.searchHistoryDao()
 
+    private val deviceContactsManager by lazy {
+        DeviceContactsManager(context.applicationContext)
+    }
+
     private val contactsRepository: ContactsRepository =
         ContactsRepositoryImpl(
             api = contactsApiService,
             contactsDao = contactsDao,
             searchHistoryDao = searchHistoryDao,
+            deviceContactsManager = deviceContactsManager
         )
 
     val getContactsUseCase = GetContactsUseCase(contactsRepository)
@@ -75,9 +81,13 @@ class AppContainer(context: Context) {
     val saveSearchQueryUseCase = SaveSearchQueryUseCase(contactsRepository)
     val getContactDetailUseCase = GetContactDetailUseCase(contactsRepository)
     val upsertContactUseCase = UpsertContactUseCase(contactsRepository)
-    val saveContactToDeviceUseCase = SaveContactToDeviceUseCase(contactsRepository)
     val uploadProfileImageUseCase = UploadProfileImageUseCase(contactsRepository)
     val deleteSearchHistoryItemUseCase = DeleteSearchHistoryItemUseCase(contactsRepository)
-
     val clearSearchHistoryUseCase = ClearSearchHistoryUseCase(contactsRepository)
+
+    val saveContactToDeviceUseCase by lazy {
+        SaveContactToDeviceUseCase(
+            contactsRepository = contactsRepository
+        )
+    }
 }

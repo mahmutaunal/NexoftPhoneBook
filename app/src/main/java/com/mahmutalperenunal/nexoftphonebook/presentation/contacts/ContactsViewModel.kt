@@ -145,7 +145,7 @@ class ContactsViewModel(
                     is Result.Error -> {
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            errorMessage = result.message ?: "Beklenmeyen bir hata oluştu"
+                            errorMessage = result.message ?: "An unexpected error occurred"
                         )
                     }
                 }
@@ -186,7 +186,7 @@ class ContactsViewModel(
                     is Result.Error -> {
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            errorMessage = result.message ?: "Arama sırasında hata oluştu"
+                            errorMessage = result.message ?: "An error occurred during the search"
                         )
                     }
                 }
@@ -213,7 +213,7 @@ class ContactsViewModel(
                         isLoading = false,
                         isDeleteSheetVisible = false,
                         deleteCandidate = null,
-                        errorMessage = result.message ?: "Kişi silinemedi"
+                        errorMessage = result.message ?: "The person could not be deleted."
                     )
                 }
                 Result.Loading -> Unit

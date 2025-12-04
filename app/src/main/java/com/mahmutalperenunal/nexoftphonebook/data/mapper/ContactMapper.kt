@@ -13,9 +13,7 @@ fun UserDto.toEntity(): ContactEntity =
         photoUrl = profileImageUrl
     )
 
-fun ContactEntity.toDomain(
-    isInDeviceContacts: Boolean
-): Contact =
+fun ContactEntity.toDomain(): Contact =
     Contact(
         id = id,
         firstName = firstName,
@@ -23,13 +21,4 @@ fun ContactEntity.toDomain(
         phoneNumber = phoneNumber,
         photoUrl = photoUrl,
         isInDeviceContacts = isInDeviceContacts
-    )
-
-fun Contact.toEntity(): ContactEntity =
-    ContactEntity(
-        id = id,
-        firstName = firstName,
-        lastName = lastName,
-        phoneNumber = phoneNumber,
-        photoUrl = photoUrl
     )

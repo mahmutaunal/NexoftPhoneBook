@@ -34,6 +34,8 @@ class ContactDetailViewModel(
     )
     val state: StateFlow<ContactDetailState> = _state
 
+    private var latestPhotoBytes: ByteArray? = null
+
     init {
         if (!isNewContact && contactId != null) {
             loadContact(contactId)
@@ -56,8 +58,10 @@ class ContactDetailViewModel(
             is ContactDetailEvent.OnPhotoUrlChange ->
                 _state.value = _state.value.copy(photoUrl = event.value)
 
-            is ContactDetailEvent.OnImageUploadRequested ->
+            is ContactDetailEvent.OnImageUploadRequested -> {
+                latestPhotoBytes = event.imageBytes
                 uploadImage(event.imageBytes, event.fileName)
+            }
 
             ContactDetailEvent.OnToggleEdit ->
                 _state.value = _state.value.copy(isEditMode = true)
@@ -117,7 +121,7 @@ class ContactDetailViewModel(
                     is Result.Error -> {
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            errorMessage = result.message ?: "Kişi yüklenemedi"
+                            errorMessage = result.message ?: "The person could not be loaded"
                         )
                     }
                 }
@@ -167,7 +171,7 @@ class ContactDetailViewModel(
                 is Result.Error -> {
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        errorMessage = result.message ?: "Kaydedilirken hata oluştu"
+                        errorMessage = result.message ?: "An error occurred while saving"
                     )
                 }
                 Result.Loading -> Unit
@@ -192,7 +196,7 @@ class ContactDetailViewModel(
                     _state.value = _state.value.copy(
                         isLoading = false,
                         showDeleteBottomSheet = false,
-                        errorMessage = result.message ?: "Silinirken hata oluştu"
+                        errorMessage = result.message ?: "An error occurred while deleting"
                     )
                 }
                 Result.Loading -> Unit
@@ -216,7 +220,7 @@ class ContactDetailViewModel(
 
             _state.value = _state.value.copy(isLoading = true, errorMessage = null)
 
-            when (val result = saveContactToDeviceUseCase(contact)) {
+            when (val result = saveContactToDeviceUseCase(contact, latestPhotoBytes)) {
                 is Result.Success -> {
                     _state.value = _state.value.copy(
                         isLoading = false,
@@ -228,7 +232,7 @@ class ContactDetailViewModel(
                 is Result.Error -> {
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        errorMessage = result.message ?: "Cihaza kaydedilemedi"
+                        errorMessage = result.message ?: "Could not be saved to the device"
                     )
                 }
                 Result.Loading -> Unit

@@ -7,18 +7,33 @@ sealed class ContactDetailEvent {
     data class OnLastNameChange(val value: String) : ContactDetailEvent()
     data class OnPhoneNumberChange(val value: String) : ContactDetailEvent()
     data class OnPhotoUrlChange(val value: String) : ContactDetailEvent()
-    // ContactDetailEvent.kt
-    data class OnImageUploadRequested(val imageBytes: ByteArray, val fileName: String) : ContactDetailEvent()
+
+    data class OnImageUploadRequested(val imageBytes: ByteArray, val fileName: String) : ContactDetailEvent() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as OnImageUploadRequested
+
+            if (!imageBytes.contentEquals(other.imageBytes)) return false
+            if (fileName != other.fileName) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = imageBytes.contentHashCode()
+            result = 31 * result + fileName.hashCode()
+            return result
+        }
+    }
 
     object OnToggleEdit : ContactDetailEvent()
     object OnCancelEdit : ContactDetailEvent()
     object OnSaveClick : ContactDetailEvent()
-
     object OnSaveToPhoneClick : ContactDetailEvent()
-
     object OnDeleteClick : ContactDetailEvent()
     object OnDeleteConfirm : ContactDetailEvent()
     object OnDeleteCancel : ContactDetailEvent()
-
     object OnToastShown : ContactDetailEvent()
 }

@@ -18,36 +18,30 @@ import retrofit2.http.Path
 // Retrofit service defining API endpoints for remote contact operations
 interface ContactsApiService {
 
-    // GET /api/User/GetAll
     @GET("api/User/GetAll")
     suspend fun getContacts(): ApiResponse<UsersResponse>
 
-    // GET /api/User/{id}
     @GET("api/User/{id}")
     suspend fun getContactById(
         @Path("id") id: String
     ): ApiResponse<UserDto>
 
-    // POST /api/User
     @POST("api/User")
     suspend fun createContact(
         @Body request: CreateOrUpdateContactRequest
     ): ApiResponse<UserDto>
 
-    // PUT /api/User/{id}
     @PUT("api/User/{id}")
     suspend fun updateContact(
         @Path("id") id: String,
         @Body request: CreateOrUpdateContactRequest
     ): ApiResponse<UserDto>
 
-    // DELETE /api/User/{id}
     @DELETE("api/User/{id}")
     suspend fun deleteContact(
         @Path("id") id: String
     ): ApiResponse<Map<String, Any>>
 
-    // POST /api/User/UploadImage
     @Multipart
     @POST("api/User/UploadImage")
     suspend fun uploadImage(

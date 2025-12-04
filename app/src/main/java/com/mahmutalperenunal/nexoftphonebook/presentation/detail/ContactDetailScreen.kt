@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -200,6 +201,17 @@ fun ContactDetailScreen(
         if (granted) launchGallery()
     }
 
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val writeGranted = permissions[Manifest.permission.WRITE_CONTACTS] == true
+        val readGranted = permissions[Manifest.permission.READ_CONTACTS] == true
+
+        if (writeGranted && readGranted) {
+            onEvent(ContactDetailEvent.OnSaveToPhoneClick)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -364,7 +376,28 @@ fun ContactDetailScreen(
                 if (!state.isNewContact && !state.isEditMode) {
                     SaveToPhoneButton(
                         enabled = !state.isSavedInDevice,
-                        onClick = { onEvent(ContactDetailEvent.OnSaveToPhoneClick) }
+                        onClick = {
+                            val hasWritePermission = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.WRITE_CONTACTS
+                            ) == PackageManager.PERMISSION_GRANTED
+
+                            val hasReadPermission = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.READ_CONTACTS
+                            ) == PackageManager.PERMISSION_GRANTED
+
+                            if (hasWritePermission && hasReadPermission) {
+                                onEvent(ContactDetailEvent.OnSaveToPhoneClick)
+                            } else {
+                                contactsPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.READ_CONTACTS,
+                                        Manifest.permission.WRITE_CONTACTS
+                                    )
+                                )
+                            }
+                        }
                     )
 
                     if (state.showAlreadySavedInfo) {
@@ -373,7 +406,7 @@ fun ContactDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Person,
+                                imageVector = Icons.Default.Info,
                                 contentDescription = null,
                                 tint = Color.Gray
                             )
@@ -595,7 +628,7 @@ private fun AvatarWithGlow(
     val context = LocalContext.current
 
     var dominantColor by remember(photoUrl) {
-        mutableStateOf(Color(0xFF000000).copy(alpha = 0.15f))
+        mutableStateOf(Color(0xFF000000).copy(alpha = 0.5f))
     }
 
     LaunchedEffect(photoUrl, showGlow) {
@@ -622,10 +655,10 @@ private fun AvatarWithGlow(
             }
 
             resultColor?.let { color ->
-                dominantColor = color.copy(alpha = 0.35f)
+                dominantColor = color.copy(alpha = 0.5f)
             }
         } else {
-            dominantColor = Color(0xFF000000).copy(alpha = 0.15f)
+            dominantColor = Color(0xFF000000).copy(alpha = 0.5f)
         }
     }
 
@@ -694,7 +727,7 @@ private fun SaveToPhoneButton(
             .fillMaxWidth()
             .height(56.dp),
         shape = RoundedCornerShape(28.dp),
-        border = ButtonDefaults.outlinedButtonBorder.copy(
+        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
             width = 1.dp,
             brush = Brush.linearGradient(listOf(borderColor, borderColor))
         ),
@@ -843,7 +876,7 @@ private fun PhotoSourceBottomSheet(
                     containerColor = Color.White,
                     contentColor = Color.Black
                 ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                     width = 1.dp,
                     brush = Brush.linearGradient(listOf(Color.Black, Color.Black))
                 )
@@ -869,7 +902,7 @@ private fun PhotoSourceBottomSheet(
                     containerColor = Color.White,
                     contentColor = Color.Black
                 ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                     width = 1.dp,
                     brush = Brush.linearGradient(listOf(Color.Black, Color.Black))
                 )

@@ -37,4 +37,13 @@ interface ContactsDao {
         ORDER BY firstName COLLATE NOCASE, lastName COLLATE NOCASE
     """)
     fun searchContactsFlow(query: String): Flow<List<ContactEntity>>
+
+    @Query("UPDATE contacts SET isInDeviceContacts = :isInDeviceContacts WHERE id = :id")
+    suspend fun updateDeviceContactFlag(
+        id: String,
+        isInDeviceContacts: Boolean
+    )
+
+    @Query("SELECT * FROM contacts")
+    suspend fun getContactsOnce(): List<ContactEntity>
 }

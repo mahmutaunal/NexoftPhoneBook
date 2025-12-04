@@ -14,8 +14,9 @@ interface ContactsRepository {
     fun searchContacts(query: String): Flow<Result<List<Contact>>>
     fun getSearchHistory(): Flow<List<SearchHistoryItem>>
     suspend fun saveSearchQuery(query: String)
-    suspend fun saveContactToDevice(contact: Contact): Result<Unit>
+    suspend fun saveContactToDevice(contact: Contact, photoBytes: ByteArray? = null): Result<Unit>
     suspend fun uploadProfileImage(imageBytes: ByteArray, fileName: String): Result<String>
     suspend fun deleteSearchHistoryItem(id: Long)
     suspend fun clearSearchHistory()
+    suspend fun markAsSavedInDevice(contactId: String)
 }
