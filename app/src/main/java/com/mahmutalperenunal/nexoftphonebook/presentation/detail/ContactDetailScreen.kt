@@ -1,14 +1,10 @@
 package com.mahmutalperenunal.nexoftphonebook.presentation.detail
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.Build
 import android.net.Uri
-import android.graphics.drawable.BitmapDrawable
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -19,56 +15,39 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
-import androidx.palette.graphics.Palette
 import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
-import coil.compose.AsyncImage
-import coil.ImageLoader
-import coil.request.ImageRequest
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
-import com.mahmutalperenunal.nexoftphonebook.R
-import com.mahmutalperenunal.nexoftphonebook.presentation.ui.LocalAppImageLoader
+import com.mahmutalperenunal.nexoftphonebook.presentation.common.readBytesFromUri
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
 
+import com.mahmutalperenunal.nexoftphonebook.R
+
+// Screen for viewing, creating, and editing a single contact
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactDetailScreen(
@@ -76,6 +55,7 @@ fun ContactDetailScreen(
     onEvent: (ContactDetailEvent) -> Unit,
     onBack: () -> Unit
 ) {
+    // Show completion screen after successfully creating a new contact
     if (state.isNewContact && state.createCompleted) {
         NewContactDoneScreen(
             onFinished = { onBack() }
@@ -83,10 +63,15 @@ fun ContactDetailScreen(
         return
     }
 
+    // Handle success toast lifecycle and navigate back for existing contacts
     state.showSuccessToast?.let { message ->
         LaunchedEffect(message) {
             delay(2000)
             onEvent(ContactDetailEvent.OnToastShown)
+            // After showing success toast for existing contacts, navigate back
+            if (!state.isNewContact) {
+                onBack()
+            }
         }
     }
 
@@ -97,51 +82,9 @@ fun ContactDetailScreen(
 
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    fun readBytesFromUri(
-        context: Context,
-        uri: Uri,
-        maxDimension: Int = 720,
-        quality: Int = 75
-    ): ByteArray? {
-        return try {
-            val boundsOptions = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, boundsOptions)
-            }
-
-            val srcWidth = boundsOptions.outWidth
-            val srcHeight = boundsOptions.outHeight
-            if (srcWidth <= 0 || srcHeight <= 0) return null
-
-            val larger = maxOf(srcWidth, srcHeight)
-            var inSampleSize = 1
-            if (larger > maxDimension) {
-                inSampleSize = larger / maxDimension
-                if (inSampleSize < 1) inSampleSize = 1
-            }
-
-            val decodeOptions = BitmapFactory.Options().apply {
-                this.inSampleSize = inSampleSize
-            }
-
-            val scaledBitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, decodeOptions)
-            } ?: return null
-
-            val output = ByteArrayOutputStream()
-            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
-            scaledBitmap.recycle()
-
-            output.toByteArray()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
+    // Pick a profile photo from the gallery and forward it to the ViewModel
     val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
         val bytes = readBytesFromUri(context, uri) ?: return@rememberLauncherForActivityResult
@@ -155,6 +98,7 @@ fun ContactDetailScreen(
         )
     }
 
+    // Capture a profile photo with the camera and forward it to the ViewModel
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
@@ -171,6 +115,7 @@ fun ContactDetailScreen(
         )
     }
 
+    // Launch the camera using a FileProvider-backed Uri
     fun launchCamera() {
         val file = File(
             context.cacheDir,
@@ -186,7 +131,11 @@ fun ContactDetailScreen(
     }
 
     fun launchGallery() {
-        galleryLauncher.launch("image/*")
+        galleryLauncher.launch(
+            PickVisualMediaRequest(
+                ActivityResultContracts.PickVisualMedia.ImageOnly
+            )
+        )
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -195,12 +144,8 @@ fun ContactDetailScreen(
         if (granted) launchCamera()
     }
 
-    val galleryPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) launchGallery()
-    }
 
+    // Request READ/WRITE_CONTACTS and save to phone if both are granted
     val contactsPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -226,7 +171,7 @@ fun ContactDetailScreen(
                 .align(Alignment.BottomCenter),
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             )
         ) {
             Column(
@@ -248,9 +193,9 @@ fun ContactDetailScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 val photoLabel = when {
-                    state.isNewContact && state.photoUrl == null -> "Add Photo"
-                    state.isNewContact && state.photoUrl != null -> "Change Photo"
-                    else -> "Change Photo"
+                    state.isNewContact && state.photoUrl == null -> stringResource(id = R.string.detail_photo_add)
+                    state.isNewContact && state.photoUrl != null -> stringResource(id = R.string.detail_photo_change)
+                    else -> stringResource(id = R.string.detail_photo_change)
                 }
 
                 Text(
@@ -274,18 +219,21 @@ fun ContactDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = "First Name",
-                            color = Color.Gray
+                            text = stringResource(id = R.string.detail_first_name),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     singleLine = true,
                     enabled = state.isEditMode,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        disabledTextColor = Color.Black,
-                        cursorColor = Color.Black
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     ),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
@@ -306,18 +254,21 @@ fun ContactDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = "Last Name",
-                            color = Color.Gray
+                            text = stringResource(id = R.string.detail_last_name),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     singleLine = true,
                     enabled = state.isEditMode,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        disabledTextColor = Color.Black,
-                        cursorColor = Color.Black
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     ),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
@@ -347,18 +298,21 @@ fun ContactDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = {
                         Text(
-                            text = "Phone Number",
-                            color = Color.Gray
+                            text = stringResource(id = R.string.detail_phone_number),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     singleLine = true,
                     enabled = state.isEditMode,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.Black,
-                        unfocusedTextColor = Color.Black,
-                        disabledTextColor = Color.Black,
-                        cursorColor = Color.Black
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     ),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Phone,
@@ -373,6 +327,7 @@ fun ContactDetailScreen(
 
                 Spacer(modifier = Modifier.height(48.dp))
 
+                // Save existing contacts into the device's native contacts app
                 if (!state.isNewContact && !state.isEditMode) {
                     SaveToPhoneButton(
                         enabled = !state.isSavedInDevice,
@@ -408,13 +363,13 @@ fun ContactDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = null,
-                                tint = Color.Gray
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "This Contact Is Already Saved On Your Phone.",
+                                text = stringResource(id = R.string.detail_already_saved_info),
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             )
                         }
@@ -479,23 +434,7 @@ fun ContactDetailScreen(
                 },
                 onGalleryClick = {
                     showPhotoSourceSheet = false
-
-                    val storagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        Manifest.permission.READ_MEDIA_IMAGES
-                    } else {
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                    }
-
-                    val hasStoragePermission = ContextCompat.checkSelfPermission(
-                        context,
-                        storagePermission
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    if (hasStoragePermission) {
-                        launchGallery()
-                    } else {
-                        galleryPermissionLauncher.launch(storagePermission)
-                    }
+                    launchGallery()
                 }
             )
         }
@@ -516,7 +455,7 @@ private fun TopBar(
         if (state.isEditMode) {
             // New Contact & Edit Contact
             Text(
-                text = "Cancel",
+                text = stringResource(id = R.string.common_cancel),
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable {
                     onEvent(ContactDetailEvent.OnCancelEdit)
@@ -525,7 +464,11 @@ private fun TopBar(
             )
 
             Text(
-                text = if (state.isNewContact) "New Contact" else "Edit Contact",
+                text = if (state.isNewContact) {
+                    stringResource(id = R.string.detail_new_contact_title)
+                } else {
+                    stringResource(id = R.string.detail_edit_contact_title)
+                },
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.SemiBold
                 )
@@ -535,7 +478,7 @@ private fun TopBar(
                 if (state.canSave) MaterialTheme.colorScheme.primary else Color.LightGray
 
             Text(
-                text = "Done",
+                text = stringResource(id = R.string.detail_done),
                 color = doneColor,
                 modifier = Modifier
                     .clickable(enabled = state.canSave) {
@@ -552,7 +495,10 @@ private fun TopBar(
                 modifier = Modifier.wrapContentSize(Alignment.TopEnd)
             ) {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(id = R.string.detail_menu)
+                    )
                 }
 
                 DropdownMenu(
@@ -561,7 +507,7 @@ private fun TopBar(
                     offset = DpOffset(x = 0.dp, y = 8.dp),
                     modifier = Modifier
                         .width(180.dp)
-                        .background(Color.White)
+                        .background(MaterialTheme.colorScheme.surface)
                 ) {
                     // Edit row
                     Row(
@@ -576,19 +522,19 @@ private fun TopBar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Edit",
+                            text = stringResource(id = R.string.detail_menu_edit),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = null,
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     HorizontalDivider(
-                        color = Color.LightGray.copy(alpha = 0.4f)
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
                     )
 
                     // Delete row
@@ -604,387 +550,18 @@ private fun TopBar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Delete",
+                            text = stringResource(id = R.string.detail_menu_delete),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Red
+                            color = MaterialTheme.colorScheme.error
                         )
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = null,
-                            tint = Color.Red
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AvatarWithGlow(
-    photoUrl: String?,
-    showGlow: Boolean
-) {
-    val context = LocalContext.current
-
-    var dominantColor by remember(photoUrl) {
-        mutableStateOf(Color(0xFF000000).copy(alpha = 0.5f))
-    }
-
-    LaunchedEffect(photoUrl, showGlow) {
-        if (showGlow && photoUrl != null) {
-            val resultColor = withContext(Dispatchers.IO) {
-                try {
-                    val loader = ImageLoader(context)
-                    val request = ImageRequest.Builder(context)
-                        .data(photoUrl)
-                        .allowHardware(false)
-                        .build()
-                    val result = loader.execute(request)
-                    val bitmap = (result.drawable as? BitmapDrawable)?.bitmap ?: return@withContext null
-
-                    val palette = Palette.from(bitmap).generate()
-                    val swatch = palette.vibrantSwatch
-                        ?: palette.lightVibrantSwatch
-                        ?: palette.dominantSwatch
-
-                    swatch?.rgb?.let { rgb -> Color(rgb) }
-                } catch (_: Exception) {
-                    null
-                }
-            }
-
-            resultColor?.let { color ->
-                dominantColor = color.copy(alpha = 0.5f)
-            }
-        } else {
-            dominantColor = Color(0xFF000000).copy(alpha = 0.5f)
-        }
-    }
-
-    Box(
-        modifier = Modifier.size(120.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        if (showGlow) {
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                dominantColor,
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-        }
-
-        if (photoUrl != null) {
-            val imageLoader = LocalAppImageLoader.current
-
-            AsyncImage(
-                model = photoUrl,
-                imageLoader = imageLoader,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray.copy(alpha = 0.4f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SaveToPhoneButton(
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    val borderColor = if (enabled) Color.Black else Color.LightGray
-    val textColor = if (enabled) Color.Black else Color.LightGray
-
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        shape = RoundedCornerShape(28.dp),
-        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-            width = 1.dp,
-            brush = Brush.linearGradient(listOf(borderColor, borderColor))
-        ),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = Color.White,
-            contentColor = textColor
-        )
-    ) {
-        Icon(imageVector = Icons.Default.BookmarkBorder, contentDescription = null, tint = textColor)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "Save to My Phone Contact",
-            color = textColor
-        )
-    }
-}
-
-@Composable
-private fun SuccessToast(message: String) {
-    val successColor = Color(0xFF4CAF50)
-
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White,
-        tonalElevation = 8.dp,
-        shadowElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(successColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Text(
-                text = message,
-                color = successColor,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DeleteConfirmationBottomSheet(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        scrimColor = Color.Black.copy(alpha = 0.6f),
-        containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Delete Contact",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Are You Sure You Want To Delete This Contact?",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    Text("No")
-                }
-                Button(
-                    onClick = onConfirm,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Black
-                    )
-                ) {
-                    Text("Yes")
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PhotoSourceBottomSheet(
-    onDismiss: () -> Unit,
-    onCameraClick: () -> Unit,
-    onGalleryClick: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        scrimColor = Color.Black.copy(alpha = 0.6f),
-        containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Button(
-                onClick = onCameraClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                ),
-                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(listOf(Color.Black, Color.Black))
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.CameraAlt,
-                    contentDescription = null,
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Camera")
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Button(
-                onClick = onGalleryClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                ),
-                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(listOf(Color.Black, Color.Black))
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Image,
-                    contentDescription = null,
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Gallery")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Cancel",
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { onDismiss() }
-            )
-        }
-    }
-}
-
-@Composable
-private fun NewContactDoneScreen(
-    onFinished: () -> Unit
-) {
-    val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.done)
-    )
-
-    val progress by animateLottieCompositionAsState(
-        composition = composition,
-        iterations = 1
-    )
-
-    LaunchedEffect(progress) {
-        if (progress >= 1f) {
-            delay(200)
-            onFinished()
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier.size(120.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (composition != null) {
-                    LottieAnimation(
-                        composition = composition,
-                        progress = { progress }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "All Done!",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "New Contact Saved 🎉",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.Gray
-                )
-            )
         }
     }
 }

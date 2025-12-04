@@ -1,54 +1,59 @@
 package com.mahmutalperenunal.nexoftphonebook.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = Color(0xFF2979FF),
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+
+    primaryContainer = Color(0xFFE3F2FD),
+    onPrimaryContainer = Color(0xFF1565C0),
+
+    background = Color(0xFFF6F6F6),
+    onBackground = Color(0xFF1D1B20),
+
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF1D1B20),
+
+    onSurfaceVariant = Color(0xFF757575),
+
+    outlineVariant = Color(0xFFEEEEEE),
+
+    error = Color(0xFFB3261E),
+    onError = Color.White
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFF82B1FF),
+    onPrimary = Color(0xFF00296B),
+
+    primaryContainer = Color(0xFF00478F),
+    onPrimaryContainer = Color(0xFFD6E4FF),
+
+    background = Color(0xFF121212),
+    onBackground = Color(0xFFE2E2E2),
+
+    surface = Color(0xFF1E1E1E),
+    onSurface = Color(0xFFE2E2E2),
+
+    onSurfaceVariant = Color(0xFFC4C7C5),
+    outlineVariant = Color(0xFF444746),
+
+    error = Color(0xFFF2B8B5),
+    onError = Color(0xFF601410)
 )
 
 @Composable
 fun NexoftPhoneBookTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,

@@ -13,6 +13,7 @@ class DeviceContactsManager(
         val displayNameLower: String
     )
 
+    // Normalizes a phone number by stripping all non-digit characters
     private fun normalizeNumber(raw: String?): String =
         raw?.filter { it.isDigit() } ?: ""
 

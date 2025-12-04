@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.mahmutalperenunal.nexoftphonebook.domain.entity.Contact
-import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactSectionUiModel
-import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactUiModel
+import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.model.ContactSectionUiModel
+import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.model.ContactUiModel
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.DeleteContactUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.contacts.GetContactsUseCase
 import com.mahmutalperenunal.nexoftphonebook.domain.usecase.search.ClearSearchHistoryUseCase

@@ -22,9 +22,11 @@ import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsScree
 import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.ContactsViewModel
 import com.mahmutalperenunal.nexoftphonebook.presentation.detail.ContactDetailScreen
 import com.mahmutalperenunal.nexoftphonebook.presentation.detail.ContactDetailViewModel
-import com.mahmutalperenunal.nexoftphonebook.presentation.ui.ProvideAppImageLoader
+import com.mahmutalperenunal.nexoftphonebook.presentation.common.ProvideAppImageLoader
 import com.mahmutalperenunal.nexoftphonebook.ui.theme.NexoftPhoneBookTheme
 
+
+// Main activity hosting navigation and screens for the phone book app
 class MainActivity : ComponentActivity() {
 
     private val appContainer: AppContainer by lazy {
@@ -144,6 +146,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Configures transparent system bars and icon colors based on the current theme
 @Composable
 fun SetupSystemBars() {
     val systemUiController = rememberSystemUiController()

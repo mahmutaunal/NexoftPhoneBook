@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+// ViewModel that manages contact detail, edit, delete, device save, and image upload state
 class ContactDetailViewModel(
     private val isNewContact: Boolean,
     private val contactId: String?,
@@ -26,6 +27,7 @@ class ContactDetailViewModel(
     private val uploadProfileImageUseCase: UploadProfileImageUseCase
 ) : ViewModel() {
 
+    // Backing state flow for the contact detail screen
     private val _state = MutableStateFlow(
         ContactDetailState(
             isNewContact = isNewContact,
@@ -42,6 +44,7 @@ class ContactDetailViewModel(
         }
     }
 
+    // Single entry point for UI events on the contact detail screen
     fun onEvent(event: ContactDetailEvent) {
         when (event) {
             is ContactDetailEvent.Init -> Unit
@@ -98,6 +101,7 @@ class ContactDetailViewModel(
         }
     }
 
+    // Loads contact details by ID and updates UI state
     private fun loadContact(id: String) {
         viewModelScope.launch {
             getContactDetailUseCase(id).collectLatest { result ->
@@ -129,6 +133,7 @@ class ContactDetailViewModel(
         }
     }
 
+    // Creates or updates the contact using the upsert use case
     private fun saveContact() {
         val current = _state.value
         if (!current.canSave) return
@@ -179,6 +184,7 @@ class ContactDetailViewModel(
         }
     }
 
+    // Deletes the current contact and shows a feedback message
     private fun deleteContact() {
         val id = contactId ?: return
         viewModelScope.launch {
@@ -204,6 +210,7 @@ class ContactDetailViewModel(
         }
     }
 
+    // Saves the current contact (and photo if available) into device contacts
     private fun saveToPhone() {
         val current = _state.value
         if (current.isSavedInDevice) return
@@ -240,6 +247,7 @@ class ContactDetailViewModel(
         }
     }
 
+    // Uploads a profile image and updates the photo URL on success
     private fun uploadImage(imageBytes: ByteArray, fileName: String) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, errorMessage = null)
@@ -263,6 +271,7 @@ class ContactDetailViewModel(
         }
     }
 
+    // Factory for creating ContactDetailViewModel instances with required dependencies
     class ContactDetailViewModelFactory(
         private val isNewContact: Boolean,
         private val contactId: String?,

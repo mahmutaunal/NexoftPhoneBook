@@ -1,8 +1,8 @@
 package com.mahmutalperenunal.nexoftphonebook.presentation.contacts
 
 import com.mahmutalperenunal.nexoftphonebook.domain.entity.SearchHistoryItem
-import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactSectionUiModel
-import com.mahmutalperenunal.nexoftphonebook.domain.model.ContactUiModel
+import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.model.ContactSectionUiModel
+import com.mahmutalperenunal.nexoftphonebook.presentation.contacts.model.ContactUiModel
 
 data class ContactsState(
     val isLoading: Boolean = false,
