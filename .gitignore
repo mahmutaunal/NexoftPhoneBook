@@ -77,3 +77,7 @@ Thumbs.db
 /.gradle
 /.gradle/8.13
 .gradle/8.13/executionHistory/executionHistory.bin
+app/release/app-release.apk
+app/release/baselineProfiles/0/app-release.dm
+app/release/baselineProfiles/1/app-release.dm
+app/release/output-metadata.json
